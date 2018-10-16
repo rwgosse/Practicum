@@ -348,14 +348,14 @@ if __name__ == "__main__":
     #    get_blocks()
 
         # test Create Transactions in a row
-        for x in range(0, 30):
+        for x in range(0, 3):
             u = uuid.uuid4() # create a bogus string to represent an encrypted url 
             add_transaction(miner_address,u.hex) # attach the user dat
             
         
         # mine transactions into blocks
         if local_transactions:
-            for x in range(0, 35):
+            for x in range(0, 5):
                 mine()
         #get_blocks()
     
