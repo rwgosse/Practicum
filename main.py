@@ -372,7 +372,7 @@ def recvall(sock, n):
         packet = sock.recv(n - len(data))
         if not packet:
             return None
-        data += packet.encode()
+        data += packet # knows this is a byte object WTF!!!
     return data
 
 
@@ -392,7 +392,7 @@ def findchains():
             try:
                 s.connect((peer_address, peer_port))
                 
-                total_data = recv_msg(s)
+               # total_data = 
                 
                 
 #                total_data = b''
@@ -422,7 +422,7 @@ def findchains():
                 
                 
                 
-                data_variable = pickle.loads(total_data)
+                data_variable = pickle.loads(recv_msg(s))
                 
                 chain = data_variable
                 foreign_chains.append(chain)
