@@ -392,7 +392,7 @@ def findchains():
             try:
                 s.connect((peer_address, peer_port))
                 total_data = b''
-                total_data += recv_msg(s)
+                total_data = recv_msg(s)
                 
                 
 #                total_data = b''
