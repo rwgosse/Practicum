@@ -105,7 +105,7 @@ class ChainServer(object):
         try:
             # Pickle the chain and send it to the requesting client
             data_string = pickle.dumps(blockchain)
-            data_string = blockchain
+
             client.sendall(data_string)
             
             data_string = struct.pack('>I', len(data_string)) + data_string
@@ -116,7 +116,7 @@ class ChainServer(object):
         except Exception as ex:
             client.close()
             print ("but something happened...")
-            print (ex)
+            raise ex
             return False      
 
 # create a new block to be the first in a new chain.
@@ -351,29 +351,30 @@ def consensus(blockchain):
     blockchain = longest_chain # set the longest list as our new local chain
     return blockchain
 
-
-
 def send_msg(sock, msg):
-    size_of_package = sys.getsizeof(msg)
-    package = str(size_of_package)+":"+ msg #Create our package size,":",message
-    sock.sendall(package)
+    # Prefix each message with a 4-byte length (network byte order)
+    msg = struct.pack('>I', len(msg)) + msg
+    sock.sendall(msg)
 
 def recv_msg(sock):
-    try:
-        header = sock.recv(2)#Magic, small number to begin with.
-        while ":" not in header:
-            header += sock.recv(2) #Keep looping, picking up two bytes each time
+    # Read message length and unpack it into an integer
+    raw_msglen = recvall(sock, 4)
+    if not raw_msglen:
+        return None
+    msglen = struct.unpack('>I', raw_msglen)[0]
+    # Read the message data
+    return recvall(sock, msglen)
 
-        size_of_package, separator, message_fragment = header.partition(":")
-        message = sock.recv(int(size_of_package))
-        full_message = message_fragment + message
-        return full_message
+def recvall(sock, n):
+    # Helper function to recv n bytes or return None if EOF is hit
+    data = b''
+    while len(data) < n:
+        packet = sock.recv(n - len(data))
+        if not packet:
+            return None
+        data += packet
+    return data
 
-    except OverflowError:
-        return ("OverflowError.")
-    except:
-        print ("Unexpected error:", sys.exc_info()[0])
-        raise
 
 def findchains():
     timeout=2
