@@ -95,25 +95,25 @@ class ChainServer(object):
         self.sock.listen(5)
         while True:
             client, address = self.sock.accept()
-            client.settimeout(2)
+            #client.settimeout(2)
             threading.Thread(target = self.serve_chain,args = (client,address)).start()
 
     def serve_chain(self, client, address):
-        size = 1024
-        print ('Connected by', address)
-        while True:
-            try:
-                # get the instance of the blockchain to transmit
-                variable = blockchain
-                # Pickle the chain and send it to the requesting client
-                data_string = pickle.dumps(variable)
-                time.sleep(1)
-                client.send(data_string)
-                client.close()
-                print ('Chain Transmitted...')
-            except:
-                client.close()
-                return False      
+        print ('Chain Request by', address)
+        try:
+            # get the instance of the blockchain to transmit
+            variable = blockchain
+            # Pickle the chain and send it to the requesting client
+            print (variable)
+            data_string = pickle.dumps(variable)
+            time.sleep(1)
+            client.send(data_string)
+            client.close()
+            print ('Chain Transmitted...')
+        except:
+            client.close()
+            print ("but something happened...")
+            return False      
 
 # create a new block to be the first in a new chain.
 # data here will be for the most place symbolic or otherwise meaningless.
