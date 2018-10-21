@@ -108,7 +108,7 @@ class ChainServer(object):
             client.sendall(data_string)
             
             data_string = struct.pack('>I', len(data_string)) + data_string
-            sock.sendall(data_string)
+            self.sock.sendall(data_string)
             
             client.close()
             print ('Chain Transmitted...')
@@ -350,24 +350,29 @@ def consensus(blockchain):
     blockchain = longest_chain # set the longest list as our new local chain
     return blockchain
 
-def recv_msg(sock):
-    # Read message length and unpack it into an integer
-    raw_msglen = recvall(sock, 4)
-    if not raw_msglen:
-        return None
-    msglen = struct.unpack('>I', raw_msglen)[0]
-    # Read the message data
-    return recvall(sock, msglen)
 
-def recvall(sock, n):
-    # Helper function to recv n bytes or return None if EOF is hit
-    data = b''
-    while len(data) < n:
-        packet = sock.recv(n - len(data))
-        if not packet:
-            return None
-        data += packet
-    return data
+
+def send_msg(sock, msg):
+    size_of_package = sys.getsizeof(msg)
+    package = str(size_of_package)+":"+ msg #Create our package size,":",message
+    sock.sendall(package)
+
+def recv_msg(sock):
+    try:
+        header = sock.recv(2)#Magic, small number to begin with.
+        while ":" not in header:
+            header += sock.recv(2) #Keep looping, picking up two bytes each time
+
+        size_of_package, separator, message_fragment = header.partition(":")
+        message = sock.recv(int(size_of_package))
+        full_message = message_fragment + message
+        return full_message
+
+    except OverflowError:
+        return ("OverflowError.")
+    except:
+        print ("Unexpected error:", sys.exc_info()[0])
+        raise
 
 def findchains():
     timeout=2
