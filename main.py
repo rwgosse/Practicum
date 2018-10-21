@@ -105,8 +105,8 @@ class ChainServer(object):
             # get the instance of the blockchain to transmit
             variable = blockchain
             # Pickle the chain and send it to the requesting client
-            data_string = pickle.dump(variable)
-            time.sleep(1)
+            data_string = pickle.dumps(variable)
+            #time.sleep(1)
             client.send(data_string)
             client.close()
             print ('Chain Transmitted...')
@@ -364,12 +364,14 @@ def findchains():
                 s.connect((peer_address, peer_port))
                 data = s.recv(4096) # did I name this conn by mistake? should it be s?
                 print(data)
-                data_variable = pickle.load(data)
+                data_variable = pickle.loads(data)
                 
                 chain = data_variable
                 foreign_chains.append(chain)
                 s.close()
                 print ("Obtained Chain from peer " + str(peer_address) +" : "+ str(peer_port))
+            except socket.error:
+                print ("Couldn't connect with peer " + str(peer_address) +" : "+ str(peer_port))
             except Exception as ex:
                 print ("Couldn't connect with peer " + str(peer_address) +" : "+ str(peer_port))
                 raise ex
