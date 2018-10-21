@@ -17,6 +17,7 @@ import datetime as date
 import time
 import hashlib as hasher
 import sys, traceback
+import struct
 import os.path
 import uuid # for making random UUIDs
 import json
@@ -105,6 +106,10 @@ class ChainServer(object):
             # Pickle the chain and send it to the requesting client
             data_string = pickle.dumps(blockchain)
             client.sendall(data_string)
+            
+            data_string = struct.pack('>I', len(data_string)) + data_string
+            sock.sendall(data_string)
+            
             client.close()
             print ('Chain Transmitted...')
         except Exception as ex:
@@ -345,7 +350,27 @@ def consensus(blockchain):
     blockchain = longest_chain # set the longest list as our new local chain
     return blockchain
 
+def recv_msg(sock):
+    # Read message length and unpack it into an integer
+    raw_msglen = recvall(sock, 4)
+    if not raw_msglen:
+        return None
+    msglen = struct.unpack('>I', raw_msglen)[0]
+    # Read the message data
+    return recvall(sock, msglen)
+
+def recvall(sock, n):
+    # Helper function to recv n bytes or return None if EOF is hit
+    data = b''
+    while len(data) < n:
+        packet = sock.recv(n - len(data))
+        if not packet:
+            return None
+        data += packet
+    return data
+
 def findchains():
+    timeout=2
     global localhost
     # query other listed nodes in the network for copies of their blockchains
     foreign_chains = []
@@ -359,30 +384,33 @@ def findchains():
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             try:
                 s.connect((peer_address, peer_port))
-                total_data = []
-                data = ''
-
-                #beginning time
-                begin=time.time()
-                while True:
-                    #if you got some data, then break after timeout
-                    if total_data and time.time()-begin > timeout:
-                        break
-         
-                    #if you got no data at all, wait a little longer, twice the timeout
-                    elif time.time()-begin > timeout*2:
-                        break
-                    try:
-                        data = s.recv(4096) # did I name this conn by mistake? should it be s?
-                        if data:
-                         total_data.append(data)
-                         begin=time.time()
-                        else:
-                            #sleep for sometime to indicate a gap
-                            time.sleep(0.1)
-                    except:
-                        pass
-                total_data = ''.join(total_data)
+                total_data = recv_msg(s)
+                
+                
+#                total_data = b''
+#
+#
+#                #beginning time
+#                begin=time.time()
+#                while True:
+#                    #if you got some data, then break after timeout
+#                    if total_data and time.time()-begin > timeout:
+#                        break
+#         
+#                    #if you got no data at all, wait a little longer, twice the timeout
+#                    elif time.time()-begin > timeout*2:
+#                        break
+#                    try:
+#                        data = s.recv(4096) # did I name this conn by mistake? should it be s?
+#                        if data:
+#                         total_data.join(data)
+#                         begin=time.time()
+#                        else:
+#                            #sleep for sometime to indicate a gap
+#                            time.sleep(0.1)
+#                    except:
+#                        pass
+              
                 
                 
                 
