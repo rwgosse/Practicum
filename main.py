@@ -372,7 +372,7 @@ def recvall(sock, n):
         packet = sock.recv(n - len(data))
         if not packet:
             return None
-        data += packet
+        data += packet.encode()
     return data
 
 
@@ -429,7 +429,7 @@ def findchains():
                 s.close()
                 print ("Obtained Chain from peer " + str(peer_address) +" : "+ str(peer_port))
             except socket.error:
-                print ("Couldn't connect with peer " + str(peer_address) +" : "+ str(peer_port))
+                print ("socket error Couldn't connect with peer " + str(peer_address) +" : "+ str(peer_port))
             except Exception as ex:
                 print ("Couldn't connect with peer " + str(peer_address) +" : "+ str(peer_port))
                 raise ex
