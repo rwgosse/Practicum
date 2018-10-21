@@ -109,7 +109,7 @@ class ChainServer(object):
             client.sendall(data_string)
             
             data_string = struct.pack('>I', len(data_string)) + data_string
-            self.sock.sendall(data_string)
+            client.sendall(data_string)
             
             client.close()
             print ('Chain Transmitted...')
@@ -392,8 +392,8 @@ def findchains():
             try:
                 s.connect((peer_address, peer_port))
                 
-               # total_data = 
-                
+                total_data = recv_msg(s)
+                print (total_data)
                 
 #                total_data = b''
 #
@@ -422,7 +422,7 @@ def findchains():
                 
                 
                 
-                data_variable = pickle.loads(recv_msg(s))
+                data_variable = pickle.loads(total_data)
                 
                 chain = data_variable
                 foreign_chains.append(chain)
