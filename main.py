@@ -352,22 +352,23 @@ def findchains():
     foreign_chains = []
     for url in foreign_nodes:
         # get their chain using some sort of get request
-        address = url[0]
-        if (address != get_my_ip()):
-            port = url[1]
+        peer_address = url[0]
+        if (peer_address != get_my_ip()):
+            peer_port = url[1]
 
             # Create a socket connection.
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             try:
-                s.connect((address, port))
-                data = conn.recv(4096)
+                s.connect((peer_address, peer_port))
+                
+                data = s.recv(4096) # did I name this conn by mistake? should it be s?
                 data_variable = pickle.loads(data)
                 s.close()
                 chain = data_variable
                 foreign_chains.append(chain)
-                print ("Obtained Chain from peer " + str(address) +" : "+ str(port))
+                print ("Obtained Chain from peer " + str(peer_address) +" : "+ str(peer_port))
             except:
-                print ("Couldn't connect with peer " + str(address) +" : "+ str(port))
+                print ("Couldn't connect with peer " + str(peer_address) +" : "+ str(peer_port))
    
         
         #print("NOT YET IMPLEMENTED")
