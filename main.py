@@ -14,6 +14,7 @@
 # A00246425_Gosse_Richard_btech_majorproject_Proposol_Oct1.pdf
 
 import datetime as date
+import time
 import hashlib as hasher
 import sys, traceback
 import os.path
@@ -104,15 +105,15 @@ class ChainServer(object):
             # get the instance of the blockchain to transmit
             variable = blockchain
             # Pickle the chain and send it to the requesting client
-            print (variable)
             data_string = pickle.dumps(variable)
             time.sleep(1)
             client.send(data_string)
             client.close()
             print ('Chain Transmitted...')
-        except:
+        except Exception as ex:
             client.close()
             print ("but something happened...")
+            print (ex)
             return False      
 
 # create a new block to be the first in a new chain.
