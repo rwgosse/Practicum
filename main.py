@@ -359,8 +359,20 @@ def findchains():
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             try:
                 s.connect((peer_address, peer_port))
-                data = s.recv(4096) # did I name this conn by mistake? should it be s?
-                data_variable = pickle.loads(data)
+                total_data = []
+                data = ''
+                while True:
+                    try:
+                        data = s.recv(4096) # did I name this conn by mistake? should it be s?
+                        if data:
+                         total_data.append(data)
+                    except:
+                        pass
+                total_data = ''.join(total_data)
+                
+                
+                
+                data_variable = pickle.loads(total_data)
                 chain = data_variable
                 foreign_chains.append(chain)
                 s.close()
