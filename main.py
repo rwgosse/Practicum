@@ -106,10 +106,7 @@ class ChainServer(object):
             # Pickle the chain and send it to the requesting client
             data_string = pickle.dumps(blockchain)
 
-            client.sendall(data_string)
-            
-            data_string = struct.pack('>I', len(data_string)) + data_string
-            client.sendall(data_string)
+            send_msg(client, data_string)
             
             client.close()
             print ('Chain Transmitted...')
@@ -391,9 +388,9 @@ def findchains():
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             try:
                 s.connect((peer_address, peer_port))
-                
+                print (s)
                 total_data = recv_msg(s)
-                print (total_data)
+                
                 
 #                total_data = b''
 #
