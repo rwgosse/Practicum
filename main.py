@@ -378,8 +378,8 @@ def findchains():
                          total_data.append(data)
                          begin=time.time()
                         else:
-                        #sleep for sometime to indicate a gap
-                        time.sleep(0.1)
+                            #sleep for sometime to indicate a gap
+                            time.sleep(0.1)
                     except:
                         pass
                 total_data = ''.join(total_data)
