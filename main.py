@@ -361,11 +361,25 @@ def findchains():
                 s.connect((peer_address, peer_port))
                 total_data = []
                 data = ''
+
+                #beginning time
+                begin=time.time()
                 while True:
+                    #if you got some data, then break after timeout
+                    if total_data and time.time()-begin > timeout:
+                        break
+         
+                    #if you got no data at all, wait a little longer, twice the timeout
+                    elif time.time()-begin > timeout*2:
+                        break
                     try:
                         data = s.recv(4096) # did I name this conn by mistake? should it be s?
                         if data:
                          total_data.append(data)
+                         begin=time.time()
+                        else:
+                        #sleep for sometime to indicate a gap
+                        time.sleep(0.1)
                     except:
                         pass
                 total_data = ''.join(total_data)
