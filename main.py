@@ -105,6 +105,7 @@ class ChainServer(object):
         try:
             # Pickle the chain and send it to the requesting client
             data_string = pickle.dumps(blockchain)
+            data_string = blockchain
             client.sendall(data_string)
             
             data_string = struct.pack('>I', len(data_string)) + data_string
