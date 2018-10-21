@@ -370,8 +370,9 @@ def findchains():
                 foreign_chains.append(chain)
                 s.close()
                 print ("Obtained Chain from peer " + str(peer_address) +" : "+ str(peer_port))
-            except:
+            except Exception as ex:
                 print ("Couldn't connect with peer " + str(peer_address) +" : "+ str(peer_port))
+                raise ex
    
         
         #print("NOT YET IMPLEMENTED")
