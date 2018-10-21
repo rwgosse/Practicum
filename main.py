@@ -104,8 +104,8 @@ class ChainServer(object):
         print ('Chain Request by', address)
         try:
             # Pickle the chain and send it to the requesting client
-            data_string = pickle.dumps(blockchain)
-
+            #data_string = pickle.dumps(blockchain)
+            data_string = blockchain
             send_msg(client, data_string)
             
             client.close()
@@ -390,6 +390,7 @@ def findchains():
                 s.connect((peer_address, peer_port))
                 print (s)
                 total_data = recv_msg(s)
+                print (total_data)
                 
                 
 #                total_data = b''
@@ -419,8 +420,8 @@ def findchains():
                 
                 
                 
-                data_variable = pickle.loads(total_data) # a bytes types object is required. yet total_data keeps appearing as NoneType :(
-                
+                #data_variable = pickle.load(total_data) # a bytes types object is required. yet total_data keeps appearing as NoneType :(
+                data_variable = total_data
                 chain = data_variable
                 foreign_chains.append(chain)
                 s.close()
