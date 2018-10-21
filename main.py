@@ -20,7 +20,8 @@ import os.path
 import uuid # for making random UUIDs
 import json
 import logging
-import socket
+import socket, pickle # ummm, must I use pickle? reconsider...
+import threading
 
 # Project Meta Variables
 __author__ = "Richard W Gosse - A00246425"
@@ -31,6 +32,9 @@ OUTPUTFNAME = "./logfile.txt"
 BLOCKCHAIN_DATA_DIR = 'chaindata'
 NODE_LIST = "./nodes.cfg"
 USER_SETTINGS = "./user.cfg"
+HOST = '192.168.0.15'   # local address ** unused
+PORT = 8000 # local port
+
 
 
 
@@ -78,7 +82,38 @@ class Block:
         update_input = str(self.index) + str(self.timestamp) + str(self.user_data) + str(self.data_url) + str(self.previous_hash) + str(self.proof)
         sha.update(update_input.encode("utf-8"))
         return sha.hexdigest()
-      
+
+class ChainServer(object):
+    def __init__(self, host, port):
+        self.host = host
+        self.port = port
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.sock.bind((self.host, self.port))
+
+    def listen(self):
+        self.sock.listen(5)
+        while True:
+            client, address = self.sock.accept()
+            client.settimeout(2)
+            threading.Thread(target = self.serve_chain,args = (client,address)).start()
+
+    def serve_chain(self, client, address):
+        size = 1024
+        print ('Connected by', address)
+        while True:
+            try:
+                # get the instance of the blockchain to transmit
+                variable = blockchain
+                # Pickle the chain and send it to the requesting client
+                data_string = pickle.dumps(variable)
+                client.send(data_string)
+                client.close()
+                print ('Chain Transmitted...')
+            except:
+                client.close()
+                return False      
+
 # create a new block to be the first in a new chain.
 # data here will be for the most place symbolic or otherwise meaningless.
 def create_genesis_block():
@@ -157,14 +192,7 @@ def add_transaction(user_data, data_url):
 
         
     
-def findchains():
-    # query other listed nodes in the network for copies of their blockchains
-    foreign_chains = []
-    for url in foreign_nodes:
-        # get their chain using some sort of get request
-        print (url)
-        print("NOT YET IMPLEMENTED")
-    return foreign_chains
+
     
 
 def proof_of_work(last_proof):  # from snakecoin server example. More research here!!!
@@ -184,10 +212,11 @@ def proof_of_work(last_proof):  # from snakecoin server example. More research h
      # of our work
     return incrementor
 
-def proof_of_work2(last_proof): # tdjsnelling
+def proof_of_work2(last_proof): # tdjsnelling, 
     # each block is a lot slower on average. But the time required to mine each block
     # does not increase over time
     # also seems to be better at utilizing available memory. than pof1
+    # tried using sha256 rather than md5. is this smart?. took alot longer duh. reverted back
     string = str(last_proof) # cast as string to be safe. Account for older versions had pof1 as an int.
 
     complete = False
@@ -316,15 +345,56 @@ def consensus(blockchain):
             longest_chain = chain  
     blockchain = longest_chain # set the longest list as our new local chain
     return blockchain
-    
-    
+
+def findchains():
+    global localhost
+    # query other listed nodes in the network for copies of their blockchains
+    foreign_chains = []
+    for url in foreign_nodes:
+        # get their chain using some sort of get request
+        address = url[0]
+        if (address != get_my_ip()):
+            port = url[1]
+
+            # Create a socket connection.
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            try:
+                s.connect((address, port))
+                data = conn.recv(4096)
+                data_variable = pickle.loads(data)
+                s.close()
+                chain = data_variable
+                foreign_chains.append(chain)
+                print ("Obtained Chain from peer " + str(address) +" : "+ str(port))
+            except:
+                print ("Couldn't connect with peer " + str(address) +" : "+ str(port))
+   
+        
+        #print("NOT YET IMPLEMENTED")
+    return foreign_chains
+
+
+
+def get_my_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(("8.8.8.8", 80))
+    ip = s.getsockname()[0]
+    print(ip)
+    s.close()
+    return ip
+
+
 # Initial Setup
 logging.basicConfig(filename=OUTPUTFNAME, filemode='a', format='%(name)s - %(levelname)s - %(message)s') # log errors to file
 blockchain = sync_local_chain() # create a list of the local blockchain
 local_transactions = [] # store transactions in a list
 foreign_nodes = sync_node_list() # store urls of other nodes in a list 
 blockchain = consensus(blockchain)
-miner_address = miner_address() 
+miner_address = miner_address()
+global localhost
+localhost = get_my_ip()
+
+
 
 
 
@@ -333,8 +403,15 @@ if __name__ == "__main__":
     try:
         print ("Hello World")
         print ("UPLOAD DOWNLOAD DELETE SETTINGS")
-
         #1/0 #test exception log
+        
+        
+        
+        print ("Listening on port " + str(PORT))
+        num_connections = 0
+
+        threading.Thread(target = ChainServer(localhost,PORT).listen(),args = (client,address)).start()
+        
 
 
 
@@ -348,7 +425,7 @@ if __name__ == "__main__":
     #    get_blocks()
 
         # test Create Transactions in a row
-        for x in range(0, 3):
+        for x in range(0, 0): # vary second variable to test
             u = uuid.uuid4() # create a bogus string to represent an encrypted url 
             add_transaction(miner_address,u.hex) # attach the user dat
             
@@ -358,10 +435,13 @@ if __name__ == "__main__":
             for x in range(0, 5):
                 mine()
         #get_blocks()
+        
+
     
         
         
     except BaseException as e:
         logging.error(e, exc_info=True)
         raise e
-
+        
+    print("PROGRAM COMPLETE, EXITING...") # final command
