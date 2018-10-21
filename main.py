@@ -391,8 +391,8 @@ def findchains():
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             try:
                 s.connect((peer_address, peer_port))
-                total_data = b''
-                total_data = recv_msg(s)
+                
+                total_data + recv_msg(s)
                 
                 
 #                total_data = b''
@@ -423,6 +423,7 @@ def findchains():
                 
                 
                 data_variable = pickle.loads(total_data)
+                
                 chain = data_variable
                 foreign_chains.append(chain)
                 s.close()
