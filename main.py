@@ -102,12 +102,9 @@ class ChainServer(object):
     def serve_chain(self, client, address):
         print ('Chain Request by', address)
         try:
-            # get the instance of the blockchain to transmit
-            variable = blockchain
             # Pickle the chain and send it to the requesting client
-            data_string = pickle.dumps(variable)
-            #time.sleep(1)
-            client.send(data_string)
+            data_string = pickle.dumps(blockchain)
+            client.sendall(data_string)
             client.close()
             print ('Chain Transmitted...')
         except Exception as ex:
@@ -363,9 +360,7 @@ def findchains():
             try:
                 s.connect((peer_address, peer_port))
                 data = s.recv(4096) # did I name this conn by mistake? should it be s?
-                print(data)
                 data_variable = pickle.loads(data)
-                
                 chain = data_variable
                 foreign_chains.append(chain)
                 s.close()
