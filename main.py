@@ -93,7 +93,7 @@ class ChainServer(object):
 
     def serve_chain(self, client, address):
         # we have accepted an incomming connection request
-        print ('Chain Request by', client) 
+        print ('Chain Request by: ', address) 
         try:
             
             # get our local chain of blocks
@@ -104,8 +104,8 @@ class ChainServer(object):
                         with open(filepath, 'r') as block_file: # and open it up
                             block_info = json.load(block_file) # load it's data
                             
-                            print(type(block_info)) # should return dict
-                            print(block_info)
+                            #print(type(block_info)) # should return dict
+                            #print(block_info)
                             
                             
                             
@@ -117,10 +117,10 @@ class ChainServer(object):
             
             client.close()
             
-            print ('Chain Transmitted...')
+            print ('Chain Transmitted to: ', address)
         except Exception as ex:
             client.close()
-            print ("Transmission Error")
+            print ("Critical Transmission Error") # hopeful doesn't happen. FIX later to avoid catch all
             raise ex
             return False      
 
