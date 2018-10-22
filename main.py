@@ -177,7 +177,7 @@ def get_blocks():
               + "\nproof of work:"  + block_proof
               + "\nprevious hash:" + block_previous_hash
               )
-    chain_to_send = ßjson.dumps(chain_to_send)
+    chain_to_send = json.dumps(chain_to_send)
     return chain_to_send
         
         
