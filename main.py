@@ -105,7 +105,7 @@ class ChainServer(object):
         try:
             # Pickle the chain and send it to the requesting client
             #data_string = pickle.dumps(blockchain)
-            data_string = blockchain
+            data_string = get_blocks()
             send_msg(client, data_string)
             
             client.close()
@@ -177,6 +177,7 @@ def get_blocks():
               + "\nproof of work:"  + block_proof
               + "\nprevious hash:" + block_previous_hash
               )
+    chain_to_send = ßjson.dumps(chain_to_send)
     return chain_to_send
         
         
@@ -390,39 +391,8 @@ def findchains():
                 s.connect((peer_address, peer_port))
                 print (s)
                 total_data = recv_msg(s)
-                print (total_data)
+                chain = json.loads(total_data)
                 
-                
-#                total_data = b''
-#
-#
-#                #beginning time
-#                begin=time.time()
-#                while True:
-#                    #if you got some data, then break after timeout
-#                    if total_data and time.time()-begin > timeout:
-#                        break
-#         
-#                    #if you got no data at all, wait a little longer, twice the timeout
-#                    elif time.time()-begin > timeout*2:
-#                        break
-#                    try:
-#                        data = s.recv(4096) # did I name this conn by mistake? should it be s?
-#                        if data:
-#                         total_data.join(data)
-#                         begin=time.time()
-#                        else:
-#                            #sleep for sometime to indicate a gap
-#                            time.sleep(0.1)
-#                    except:
-#                        pass
-              
-                
-                
-                
-                #data_variable = pickle.load(total_data) # a bytes types object is required. yet total_data keeps appearing as NoneType :(
-                data_variable = total_data
-                chain = data_variable
                 foreign_chains.append(chain)
                 s.close()
                 print ("Obtained Chain from peer " + str(peer_address) +" : "+ str(peer_port))
