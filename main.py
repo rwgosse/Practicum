@@ -101,7 +101,11 @@ class ChainServer(object):
                             block_info = json.load(block_file) # load it's data 
                             print(type(block_info)) # should return dict
                             print(block_info)
+                            
+                            
+                            
                             client.send(pickle.dumps(block_info))
+                            time.sleep(0.1)
                         
             
 
@@ -372,9 +376,10 @@ def findchains():
                     incomming = s.recv(4096)
                     if not incomming:
                         break
-                     
-                
+                    # determine break point between objects 
+                    print (incomming)
                     dict = pickle.loads(incomming)
+                    print(type(dict)) # should return dict
                     block_object = Block(dict) # umm maybe need dict?
                     this_chain.append(block_object)
 
