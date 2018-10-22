@@ -80,7 +80,7 @@ class ChainServer(object):
         self.sock.bind((self.host, self.port)) # bind the socket 
         
         thread = threading.Thread(target=self.listen, args=())
-        thread.daemon = True                            # Daemonize thread
+        thread.daemon = False                            # Daemonize thread
         thread.start()                                  # Start the execution
 
     def listen(self): 
@@ -468,7 +468,7 @@ if __name__ == "__main__":
     #    get_blocks()
 
         # test Create Transactions in a row
-        for x in range(0, 2): # vary second variable to test
+        for x in range(0, 1): # vary second variable to test
             u = uuid.uuid4() # create a bogus string to represent an encrypted url 
             add_transaction(miner_address,u.hex) # attach the user dat
             
