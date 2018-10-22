@@ -78,6 +78,10 @@ class ChainServer(object):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # create socket
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # avoid common errors
         self.sock.bind((self.host, self.port)) # bind the socket 
+        
+        thread = threading.Thread(target=self.listen, args=())
+        thread.daemon = True                            # Daemonize thread
+        thread.start()                                  # Start the execution
 
     def listen(self): 
         # listen for incomming chain requests
@@ -446,9 +450,10 @@ if __name__ == "__main__":
         #1/0 #test exception log
         
         
+        chainserver = ChainServer(localhost,PORT)
+
         
-        
-        threading.Thread(target = ChainServer(localhost,PORT).listen(),args = (client,address)).start()
+        #threading.Thread(target = ChainServer(localhost,PORT).listen(),args = (client,address)).start()
 
         print ("start tests...")
 
