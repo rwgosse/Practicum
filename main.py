@@ -98,7 +98,8 @@ class ChainServer(object):
                     if filename.endswith('.json'): # if it's a json file
                         filepath = '%s/%s' % (BLOCKCHAIN_DATA_DIR, filename) # get it
                         with open(filepath, 'r') as block_file: # and open it up
-                            block_info = json.load(block_file) # load it's data 
+                            block_info = json.load(block_file) # load it's data
+                            
                             print(type(block_info)) # should return dict
                             print(block_info)
                             
@@ -347,8 +348,10 @@ def consensus(blockchain):
     foreign_chains = findchains()
     longest_chain = blockchain # set our blockchain as the longest
     for chain in foreign_chains: # check the list of foreign chains
+        print ("COMPARE: LONG: " + len(longest_chain) + " <VS> NEW: " + len(chain))
         if len(longest_chain) < len(chain): # for which is the longest
             longest_chain = chain  
+            print("NEW LONG CHAIN")
     blockchain = longest_chain # set the longest list as our new local chain
     return blockchain
 
@@ -377,10 +380,11 @@ def findchains():
                     if not incomming:
                         break
                     # determine break point between objects 
-                    print (incomming)
+                    #print (incomming)
                     dict = pickle.loads(incomming)
-                    print(type(dict)) # should return dict
+                    #print(type(dict)) # should return dict
                     block_object = Block(dict) # umm maybe need dict?
+                    #print(type(block_object)) # should return block
                     this_chain.append(block_object)
 
                 s.close()
