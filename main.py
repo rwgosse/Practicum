@@ -487,4 +487,4 @@ if __name__ == "__main__":
         logging.error(e, exc_info=True)
         raise e
         
-    print("PROGRAM COMPLETE, EXITING...") # final command
+    print("PROGRAM COMPLETE, SERVING UNTIL MANUAL ABORT...") # final command
