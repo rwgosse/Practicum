@@ -110,7 +110,7 @@ class ChainServer(object):
                             
                             
                             client.send(pickle.dumps(block_info))
-                            time.sleep(0.1)
+                            time.sleep(0.05) ## jesus this is risky but effective in spliting the byte stream
                         
             
 
@@ -353,7 +353,7 @@ def consensus(blockchain):
     foreign_chains = findchains()
     longest_chain = blockchain # set our blockchain as the longest
     for chain in foreign_chains: # check the list of foreign chains
-        print ("COMPARE: LOCAL: " + str(len(longest_chain)) + " <VS> NEW: " + str(len(chain)))
+        print ("COMPARE: LOCAL: " + str(len(longest_chain)) + " <VS> REMOTE: " + str(len(chain)))
         if len(longest_chain) < len(chain): # for which is the longest
             longest_chain = chain  
             
@@ -407,10 +407,10 @@ def findchains():
                 print ("Obtained Chain from peer " + str(peer_address) +" : "+ str(peer_port))
                 
             except socket.timeout as ex:
-                print ("NR:" + str(peer_address) +" : "+ str(peer_port))
+                print ("NA:" + str(peer_address) +" : "+ str(peer_port))
     
             except socket.error as ex:
-                print ("NR:" + str(peer_address) +" : "+ str(peer_port))
+                print ("ERR:" + str(peer_address) +" : "+ str(peer_port))
 
 
    
