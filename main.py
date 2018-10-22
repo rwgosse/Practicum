@@ -390,8 +390,8 @@ def findchains():
             try:
                 s.connect((peer_address, peer_port))
                 print (s)
-                total_data = recv_msg(s)
-                chain = json.loads(total_data)
+                data = s.recv(4096)
+                chain = json.loads(data)
                 
                 foreign_chains.append(chain)
                 s.close()
