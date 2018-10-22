@@ -397,10 +397,12 @@ def findchains():
                 this_chain = []
                 while True:
                     
-                    incomming = s.recv(4096)
+                    incomming = s.recv(400) # determine a decent byte size. 
+                    # 4096 is pretty big considering our json files are ~397, genesis being 254
                     if not incomming:
                         break
                     # determine break point between objects 
+                    # currently the server is just time.sleep(0.05) between breaks
                     #print (incomming)
                     dict = pickle.loads(incomming)
                     #print(type(dict)) # should return dict
@@ -428,7 +430,7 @@ def findchains():
 
 def get_my_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.connect(("8.8.8.8", 80))
+    s.connect(("8.8.8.8", 80)) # not reliable, there may not be an assumed Internet connection
     ip = s.getsockname()[0]
     s.close()
     return ip
