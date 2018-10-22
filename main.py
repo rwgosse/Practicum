@@ -381,14 +381,14 @@ def findchains():
                 s.close()
                 list_of_chains.append(this_chain)
                 print ("Obtained Chain from peer " + str(peer_address) +" : "+ str(peer_port))
+                
             except socket.timeout as ex:
                 print ("NR:" + str(peer_address) +" : "+ str(peer_port))
+    
             except socket.error as ex:
-                print ("socket error Couldn't connect with peer " + str(peer_address) +" : "+ str(peer_port))
-                raise ex
-            except Exception as ex:
-                print ("Couldn't connect with peer " + str(peer_address) +" : "+ str(peer_port))
-                raise ex
+                print ("NR:" + str(peer_address) +" : "+ str(peer_port))
+
+
    
         
         #print("NOT YET IMPLEMENTED")
