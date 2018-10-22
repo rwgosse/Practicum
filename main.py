@@ -397,7 +397,7 @@ def findchains():
                 this_chain = []
                 while True:
                     
-                    incomming = s.recv(400) # determine a decent byte size. 
+                    incomming = s.recv(1024) # determine a decent byte size. 
                     # 4096 is pretty big considering our json files are ~397, genesis being 254
                     if not incomming:
                         break
