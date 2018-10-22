@@ -106,7 +106,7 @@ class ChainServer(object):
             # Pickle the chain and send it to the requesting client
             #data_string = pickle.dumps(blockchain)
             data_string = get_blocks()
-            send_msg(client, data_string)
+            client.sendall(data_string)
             
             client.close()
             print ('Chain Transmitted...')
