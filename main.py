@@ -318,13 +318,19 @@ def miner_address():
 
 
 def sync_local_chain():
+    
     write_output("Syncronizing Blockchain...")
-    if not os.path.exists(BLOCKCHAIN_DATA_DIR):
-        os.mkdir(BLOCKCHAIN_DATA_DIR)
-    if os.listdir(BLOCKCHAIN_DATA_DIR) == []:
-        first_block = create_genesis_block() # add a genesis block to the local chain
-        save_block(first_block) # save the genesis block locally    
     syncing_blocks = []
+    if not os.path.exists(BLOCKCHAIN_DATA_DIR): # is there no local block folder?
+        os.mkdir(BLOCKCHAIN_DATA_DIR)
+    if os.listdir(BLOCKCHAIN_DATA_DIR) == []: # is the folder empty, ie no local genesis block?
+        # try to find a remote chain to adopt before creating a new chain
+        syncing_blocks = consensus(syncing_blocks)
+        if os.listdir(BLOCKCHAIN_DATA_DIR) == []: # is it still empty?
+            first_block = create_genesis_block() # add a genesis block to the local chain
+            save_block(first_block) # save the genesis block locally   
+        
+    
     if os.path.exists(BLOCKCHAIN_DATA_DIR):
         for filename in os.listdir(BLOCKCHAIN_DATA_DIR):
             if filename.endswith('.json'):
@@ -431,10 +437,12 @@ def get_my_ip():
 # Initial Setup
 logging.basicConfig(filename=OUTPUTFNAME, filemode='a', format='%(name)s - %(levelname)s - %(message)s') # log errors to file
 miner_address = miner_address()
+foreign_nodes = sync_node_list() # store urls of other nodes in a list 
 blockchain = sync_local_chain() # create a list of the local blockchain
 local_transactions = [] # store transactions in a list
-foreign_nodes = sync_node_list() # store urls of other nodes in a list 
+
 blockchain = consensus(blockchain)
+
 global localhost
 localhost = get_my_ip()
 
@@ -451,10 +459,6 @@ if __name__ == "__main__":
         
         
         chainserver = ChainServer(localhost,PORT)
-
-        
-        #threading.Thread(target = ChainServer(localhost,PORT).listen(),args = (client,address)).start()
-
         print ("start tests...")
 
 
