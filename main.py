@@ -5,9 +5,9 @@
 # Blockchain For Securing Decentralized Cloud Storage
 # COMP 8045 - Major Project
 
-# This project’s overall goal is to create a working model for a decentralized, 
-# distributed block chain based secure ‘cloud’ file storage application. 
-# The addition of block chain transactions will allow for network storage 
+# This project’s overall goal is to create a working model for a decentralized,
+# distributed block chain based secure ‘cloud’ file storage application.
+# The addition of block chain transactions will allow for network storage
 # meta data, such as URLs and access rights, to be secured.
 
 # See related project documents:
@@ -43,16 +43,16 @@ class Transaction:
     def __init__(self, user_data, data_url):
         self.user_data = user_data          # identify user and provide security. how exactly? TBD...
         self.data_url = data_url            # encrypted URL of user's data storage location.
-            
+
 # define a Block
 class Block:
-    
+
     def __init__(self, dictionary):
         for k, v in dictionary.items():
             setattr(self, k, v)
         if not hasattr(self, 'hash'):
-            self.hash = self.new_hash()       
-        
+            self.hash = self.new_hash()
+
     def __dict__(self):
         info = {}
         info['index'] = self.index
@@ -64,7 +64,7 @@ class Block:
         info['proof'] = self.proof
         info['hash'] = str(self.hash)
         return info
-    
+
     def new_hash(self):
         sha = hasher.sha256()
         update_input = str(self.index) + str(self.timestamp) + str(self.user_data) + str(self.data_url) + str(self.previous_hash) + str(self.proof)
@@ -77,25 +77,25 @@ class ChainServer(object):
         self.port = port
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # create socket
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # avoid common errors
-        self.sock.bind((self.host, self.port)) # bind the socket 
-        
+        self.sock.bind((self.host, self.port)) # bind the socket
+
         thread = threading.Thread(target=self.listen, args=())
         thread.daemon = False                            # Daemonize thread
         thread.start()                                  # Start the execution
 
-    def listen(self): 
+    def listen(self):
         # listen for incomming chain requests
         print ("Serving Chain Requests on port " + str(PORT))
         self.sock.listen(5) # on self.sock
-        while True: # 
-            client, address = self.sock.accept() # accept incomming connection 
-            threading.Thread(target = self.serve_chain,args = (client,address)).start() # pass connection to a new thread
+        while True: #
+            client, address = self.sock.accept() # accept incomming connection
+            threading.Thread(target=self.serve_chain, args=(client, address)).start() # pass connection to a new thread
 
     def serve_chain(self, client, address):
         # we have accepted an incomming connection request
-        print ('Chain Request by: ', address) 
+        print ('Chain Request by: ', address)
         try:
-            
+
             # get our local chain of blocks
             if os.path.exists(BLOCKCHAIN_DATA_DIR): # assuming the folder exists...
                 for filename in os.listdir(BLOCKCHAIN_DATA_DIR): # for every file...
@@ -103,26 +103,26 @@ class ChainServer(object):
                         filepath = '%s/%s' % (BLOCKCHAIN_DATA_DIR, filename) # get it
                         with open(filepath, 'r') as block_file: # and open it up
                             block_info = json.load(block_file) # load it's data
-                            
+
                             #print(type(block_info)) # should return dict
                             #print(block_info)
-                            
-                            
-                            
+
+
+
                             client.send(pickle.dumps(block_info))
                             time.sleep(0.05) ## jesus this is risky but effective in spliting the byte stream
-                        
-            
 
-            
+
+
+
             client.close()
-            
+
             print ('Chain Transmitted to: ', address)
         except Exception as ex:
             client.close()
             print ("Critical Transmission Error") # hopeful doesn't happen. FIX later to avoid catch all
             raise ex
-            return False      
+            return False
 
 # create a new block to be the first in a new chain.
 # data here will be for the most place symbolic or otherwise meaningless.
@@ -140,7 +140,7 @@ def create_genesis_block():
     return first_block
 
 def write_output(output):
-    stamp = str(date.datetime.now()) + " - " +  " - "
+    stamp = str(date.datetime.now()) + " - " + " - "
     entry = stamp + str(output)
     #entry = output
     print(entry)
@@ -150,7 +150,7 @@ def write_output(output):
     else:
         with open(OUTPUTFNAME, "a") as f:
             f.write(entry)
-            
+
 def get_blocks():
     chain_to_send = blockchain
     for i in range(len(chain_to_send)):
@@ -163,7 +163,7 @@ def get_blocks():
         block_hash = str(block.hash)
         block_proof = str(block.proof)
         block_previous_hash = str(block.previous_hash)
-        
+
         chain_to_send[i] = {
             "index": block_index,
             "version": block_version,
@@ -174,37 +174,26 @@ def get_blocks():
             "proof": block_proof,
             "previous_hash": block_previous_hash
         }
-        
+
     write_output("--------------------\n"
-              "index:" + block_index
-              + "\nversion:" + block_version
-              + "\ntimestamp:" + block_timestamp
-              + "\nuser_data:" + block_user_data
-              + "\ndata_url:" + block_data_url
-              + "\nhash:" + block_hash
-              + "\nproof of work:"  + block_proof
-              + "\nprevious hash:" + block_previous_hash
-              )
+                 "index:" + block_index
+                 + "\nversion:" + block_version
+                 + "\ntimestamp:" + block_timestamp
+                 + "\nuser_data:" + block_user_data
+                 + "\ndata_url:" + block_data_url
+                 + "\nhash:" + block_hash
+                 + "\nproof of work:"  + block_proof
+                 + "\nprevious hash:" + block_previous_hash
+                 )
     chain_to_send = json.dumps(chain_to_send)
     return chain_to_send
-        
-        
-        
-              
-        
 
-# add a new transaction to the list       POST       
+# add a new transaction to the list       POST
 def add_transaction(user_data, data_url):
     # get incomming transaction
     # add it to the list
     write_output("New Transaction: " + user_data + " " + data_url)
     local_transactions.append(Transaction(user_data, data_url))
-    
-
-        
-    
-
-    
 
 def proof_of_work(last_proof):  # from snakecoin server example. More research here!!!
     #gets slower over time. +3 hrs for blocks after 24
@@ -212,18 +201,18 @@ def proof_of_work(last_proof):  # from snakecoin server example. More research h
     # Create a variable that we will use to find
     # our next proof of work
     incrementor = last_proof + 1
-     # Keep incrementing the incrementor until
-     # it's equal to a number divisible by 9
-     # and the proof of work of the previous
-     # block in the chain
+        # Keep incrementing the incrementor until
+        # it's equal to a number divisible by 9
+        # and the proof of work of the previous
+        # block in the chain
     while not (incrementor % 9 == 0 and incrementor % last_proof == 0):
         incrementor += 1
     # Once that number is found,
     # we can return it as a proof
-     # of our work
+        # of our work
     return incrementor
 
-def proof_of_work2(last_proof): # tdjsnelling, 
+def proof_of_work2(last_proof): # tdjsnelling,
     # each block is a lot slower on average. But the time required to mine each block
     # does not increase over time
     # also seems to be better at utilizing available memory. than pof1
@@ -234,19 +223,19 @@ def proof_of_work2(last_proof): # tdjsnelling,
     n = 0
 
     while complete == False:
-            curr_string = string + str(n) # error with genblock starting with an int...
-          
-            curr_hash = hasher.md5(curr_string.encode()).hexdigest()
-            n = n + 1
+        curr_string = string + str(n) # error with genblock starting with an int...
 
-            # slows performance drastically
-            # print (curr_hash)
+        curr_hash = hasher.md5(curr_string.encode()).hexdigest()
+        n = n + 1
 
-            if curr_hash.startswith('000000'):
-                    #print (curr_hash)
-                    #print (curr_string)
-                    complete = True
-                    return curr_hash
+        # slows performance drastically
+        # print (curr_hash)
+
+        if curr_hash.startswith('000000'):
+            #print (curr_hash)
+            #print (curr_string)
+            complete = True
+            return curr_hash
 
 def is_ip(addr):
     # simple check as to if a string looks like a valid IPv4 address
@@ -264,26 +253,26 @@ def mine():
         current_transaction = local_transactions.pop(0) # first in, first out
         new_block_user_data = current_transaction.user_data
         new_block_data_url = current_transaction.data_url
-        
+
         # Get the last mined block
         # Q? what happens if we come across our own transaction? tbd
-    
+
         length = len(blockchain)
-        #print("last block:" + str(length - 1)) ## correct feeds 6        
+        #print("last block:" + str(length - 1)) ## correct feeds 6
         last_block = blockchain[length - 1]
         #print ("last block index:" + str(last_block.index)) ## incorrect feeds 5
         #print (last_block.index + 1)
         new_block_index = last_block.index + 1
         #print("new block index:" + str(new_block_index))
-    
+
         last_block_hash = last_block.hash
-        
+
         ### ----- PROOF OF WORK
         #proof = proof_of_work(last_block.proof) #snakecoin method. gets slower over time. +3 hrs for blocks after 24
         proof = proof_of_work2(last_block.proof) # tdjsnelling
         ### ----- END PROOF OF WORK
-        
-        
+
+
         #new_block = Block(new_block_index,VERSION,date.datetime.now(),last_block_hash,new_block_user_data, new_block_data_url)
         block_data = {}
         block_data['index'] = new_block_index
@@ -293,9 +282,9 @@ def mine():
         block_data['user_data'] = new_block_user_data
         block_data['proof'] = proof
         block_data['data_url'] = new_block_data_url
-        
+
         new_block = Block(block_data)
-        
+
         blockchain.append(new_block)
         save_block(new_block)
 
@@ -318,7 +307,7 @@ def miner_address():
 
 
 def sync_local_chain():
-    
+
     write_output("Syncronizing Blockchain...")
     syncing_blocks = []
     if not os.path.exists(BLOCKCHAIN_DATA_DIR): # is there no local block folder?
@@ -328,9 +317,9 @@ def sync_local_chain():
         syncing_blocks = consensus(syncing_blocks)
         if os.listdir(BLOCKCHAIN_DATA_DIR) == []: # is it still empty?
             first_block = create_genesis_block() # add a genesis block to the local chain
-            save_block(first_block) # save the genesis block locally   
-        
-    
+            save_block(first_block) # save the genesis block locally
+
+
     if os.path.exists(BLOCKCHAIN_DATA_DIR):
         for filename in os.listdir(BLOCKCHAIN_DATA_DIR):
             if filename.endswith('.json'):
@@ -349,7 +338,7 @@ def save_block(block):
         filename = '%s/%s.json' % (BLOCKCHAIN_DATA_DIR, block.index)
         with open(filename, 'w') as block_file:
             write_output("NEW BLOCK:: " + str(block.__dict__()))
-            json.dump(block.__dict__(),block_file)
+            json.dump(block.__dict__(), block_file)
 
 def consensus(blockchain):
     new_chain = False
@@ -361,8 +350,8 @@ def consensus(blockchain):
     for chain in foreign_chains: # check the list of foreign chains
         print ("COMPARE: LOCAL: " + str(len(longest_chain)) + " <VS> REMOTE: " + str(len(chain)))
         if len(longest_chain) < len(chain): # for which is the longest
-            longest_chain = chain  
-            
+            longest_chain = chain
+
             new_chain = True
     blockchain = longest_chain # set the longest list as our new local chain
     blockchain.sort(key=lambda x: x.index) # holy crap did this fix a big problem
@@ -373,7 +362,7 @@ def consensus(blockchain):
             if not os.path.isfile(filename):
                 with open(filename, 'w') as block_file:
                     write_output("ABOPTING BLOCK:: " + str(block.__dict__()))
-                    json.dump(block.__dict__(),block_file)
+                    json.dump(block.__dict__(), block_file)
     return blockchain
 
 def findchains():
@@ -392,38 +381,35 @@ def findchains():
             try:
                 s.settimeout(timeout)
                 s.connect((peer_address, peer_port))
-                
-                print (s)
+
+                #print (s)
                 this_chain = []
                 while True:
-                    
-                    incomming = s.recv(1024) # determine a decent byte size. 
+
+                    incomming = s.recv(1024) # determine a decent byte size.
                     # 4096 is pretty big considering our json files are ~397, genesis being 254
+                    # 1024 seems reliable
                     if not incomming:
                         break
-                    # determine break point between objects 
+                    # determine break point between objects
                     # currently the server is just time.sleep(0.05) between breaks
                     #print (incomming)
                     dict = pickle.loads(incomming)
                     #print(type(dict)) # should return dict
-                    block_object = Block(dict) # umm maybe need dict?
+                    block_object = Block(dict) # umm maybe need dict? yes!
                     #print(type(block_object)) # should return block
                     this_chain.append(block_object)
 
                 s.close()
                 list_of_chains.append(this_chain)
-                print ("Obtained Chain from peer " + str(peer_address) +" : "+ str(peer_port))
-                
+                print ("Obtained Chain from Remote " + str(peer_address) + " : " + str(peer_port))
+
             except socket.timeout as ex:
-                print ("NA:" + str(peer_address) +" : "+ str(peer_port))
-    
+                print ("NA:" + str(peer_address) + " : " + str(peer_port))
+
             except socket.error as ex:
-                print ("ERR:" + str(peer_address) +" : "+ str(peer_port))
+                print ("ERR:" + str(peer_address) + " : " + str(peer_port))
 
-
-   
-        
-        #print("NOT YET IMPLEMENTED")
     return list_of_chains
 
 
@@ -439,7 +425,7 @@ def get_my_ip():
 # Initial Setup
 logging.basicConfig(filename=OUTPUTFNAME, filemode='a', format='%(name)s - %(levelname)s - %(message)s') # log errors to file
 miner_address = miner_address()
-foreign_nodes = sync_node_list() # store urls of other nodes in a list 
+foreign_nodes = sync_node_list() # store urls of other nodes in a list
 blockchain = sync_local_chain() # create a list of the local blockchain
 local_transactions = [] # store transactions in a list
 
@@ -453,14 +439,14 @@ localhost = get_my_ip()
 
 
 if __name__ == "__main__":
-    
+
     try:
         print ("Hello World")
         print ("UPLOAD DOWNLOAD DELETE SETTINGS")
         #1/0 #test exception log
-        
-        
-        chainserver = ChainServer(localhost,PORT)
+
+
+        chainserver = ChainServer(localhost, PORT)
         print ("start tests...")
 
 
@@ -475,22 +461,22 @@ if __name__ == "__main__":
 
         # test Create Transactions in a row
         for x in range(0, 1): # vary second variable to test
-            u = uuid.uuid4() # create a bogus string to represent an encrypted url 
-            add_transaction(miner_address,u.hex) # attach the user dat
-            
-        
+            u = uuid.uuid4() # create a bogus string to represent an encrypted url
+            add_transaction(miner_address, u.hex) # attach the user dat
+
+
         # mine transactions into blocks
         if local_transactions:
             for x in range(0, 5):
                 mine()
         #get_blocks()
-        
 
-    
-        
-        
+
+
+
+
     except BaseException as e:
         logging.error(e, exc_info=True)
         raise e
-        
+
     print("PROGRAM COMPLETE, SERVING UNTIL MANUAL ABORT...") # final command
