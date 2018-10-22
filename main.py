@@ -342,17 +342,28 @@ def save_block(block):
             json.dump(block.__dict__(),block_file)
 
 def consensus(blockchain):
+    new_chain = False
     # Get the blocks from other nodes
     # If our chain isn't longest,
     # then we store the longest chain
     foreign_chains = findchains()
     longest_chain = blockchain # set our blockchain as the longest
     for chain in foreign_chains: # check the list of foreign chains
-        print ("COMPARE: LONG: " + len(longest_chain) + " <VS> NEW: " + len(chain))
+        print ("COMPARE: LOCAL: " + str(len(longest_chain)) + " <VS> NEW: " + str(len(chain)))
         if len(longest_chain) < len(chain): # for which is the longest
             longest_chain = chain  
-            print("NEW LONG CHAIN")
+            
+            new_chain = True
     blockchain = longest_chain # set the longest list as our new local chain
+    blockchain.sort(key=lambda x: x.index) # holy crap did this fix a big problem
+    if new_chain:
+        print("NEW LONG CHAIN")
+        for block in blockchain:
+            filename = '%s/%s.json' % (BLOCKCHAIN_DATA_DIR, block.index)
+            if not os.path.isfile(filename):
+                with open(filename, 'w') as block_file:
+                    write_output("ABOPTING BLOCK:: " + str(block.__dict__()))
+                    json.dump(block.__dict__(),block_file)
     return blockchain
 
 def findchains():
@@ -439,7 +450,7 @@ if __name__ == "__main__":
         
         threading.Thread(target = ChainServer(localhost,PORT).listen(),args = (client,address)).start()
 
-
+        print ("start tests...")
 
 
         # Test Create 10 Blocks in a row - obsolete Oct 3rd
@@ -452,7 +463,7 @@ if __name__ == "__main__":
     #    get_blocks()
 
         # test Create Transactions in a row
-        for x in range(0, 0): # vary second variable to test
+        for x in range(0, 2): # vary second variable to test
             u = uuid.uuid4() # create a bogus string to represent an encrypted url 
             add_transaction(miner_address,u.hex) # attach the user dat
             
