@@ -38,9 +38,6 @@ HOST = '192.168.0.15'   # local address ** unused
 PORT = 8000 # local port
 
 
-
-
-
 # define a transaction
 class Transaction:
     def __init__(self, user_data, data_url):
@@ -50,22 +47,11 @@ class Transaction:
 # define a Block
 class Block:
     
-#    def __init__(self, index, version, timestamp, previous_hash, user_data, data_url):
-#        self.index = index                  # unique identifier
-#        self.version = version              # project version identifier
-#        self.timestamp = timestamp          # date and time of block creation
-#        self.previous_hash = previous_hash  # hash of previous block
-#        self.user_data = user_data          # identify user and provide security. how exactly? TBD...
-#        self.data_url = data_url            # encrypted URL of user's data storage location.
-#        self.hash = self.new_hash()         # pseudo-random combined with previous hash 
-    
     def __init__(self, dictionary):
         for k, v in dictionary.items():
             setattr(self, k, v)
         if not hasattr(self, 'hash'):
-            self.hash = self.new_hash()  
-            
-        
+            self.hash = self.new_hash()       
         
     def __dict__(self):
         info = {}
@@ -89,30 +75,43 @@ class ChainServer(object):
     def __init__(self, host, port):
         self.host = host
         self.port = port
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.sock.bind((self.host, self.port))
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # create socket
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # avoid common errors
+        self.sock.bind((self.host, self.port)) # bind the socket 
 
-    def listen(self):
-        self.sock.listen(5)
-        while True:
-            client, address = self.sock.accept()
-            #client.settimeout(2)
-            threading.Thread(target = self.serve_chain,args = (client,address)).start()
+    def listen(self): 
+        # listen for incomming chain requests
+        print ("Serving Chain Requests on port " + str(PORT))
+        self.sock.listen(5) # on self.sock
+        while True: # 
+            client, address = self.sock.accept() # accept incomming connection 
+            threading.Thread(target = self.serve_chain,args = (client,address)).start() # pass connection to a new thread
 
     def serve_chain(self, client, address):
-        print ('Chain Request by', address)
+        # we have accepted an incomming connection request
+        print ('Chain Request by', client) 
         try:
-            # Pickle the chain and send it to the requesting client
-            #data_string = pickle.dumps(blockchain)
-            data_string = get_blocks()
-            client.sendall(data_string)
+            
+            # get our local chain of blocks
+            if os.path.exists(BLOCKCHAIN_DATA_DIR): # assuming the folder exists...
+                for filename in os.listdir(BLOCKCHAIN_DATA_DIR): # for every file...
+                    if filename.endswith('.json'): # if it's a json file
+                        filepath = '%s/%s' % (BLOCKCHAIN_DATA_DIR, filename) # get it
+                        with open(filepath, 'r') as block_file: # and open it up
+                            block_info = json.load(block_file) # load it's data 
+                            print(type(block_info)) # should return dict
+                            print(block_info)
+                            client.send(pickle.dumps(block_info))
+                        
+            
+
             
             client.close()
+            
             print ('Chain Transmitted...')
         except Exception as ex:
             client.close()
-            print ("but something happened...")
+            print ("Transmission Error")
             raise ex
             return False      
 
@@ -298,7 +297,7 @@ def sync_node_list():
         node = [parts[0], int(parts[1])]
         if is_ip(parts[0]): # does the address at least look like IPv4?
             settings.append(node) # then add it to the node list
-    print ("NODE LIST:" + str(settings)) # and advertise known nodes
+    #print ("NODE LIST:" + str(settings)) # and advertise known nodes
     return settings
 
 def miner_address():
@@ -349,36 +348,11 @@ def consensus(blockchain):
     blockchain = longest_chain # set the longest list as our new local chain
     return blockchain
 
-def send_msg(sock, msg):
-    # Prefix each message with a 4-byte length (network byte order)
-    msg = struct.pack('>I', len(msg)) + msg
-    sock.sendall(msg)
-
-def recv_msg(rsock):
-    # Read message length and unpack it into an integer
-    raw_msglen = recvall(rsock, 4)
-    if not raw_msglen:
-        return None
-    msglen = struct.unpack('>I', raw_msglen)[0]
-    # Read the message data
-    return recvall(rsock, msglen)
-
-def recvall(rcsock, n):
-    # Helper function to recv n bytes or return None if EOF is hit
-    data = b''
-    while len(data) < n:
-        packet = rcsock.recv(n - len(data))
-        if not packet:
-            return None
-        data += packet # knows this is a byte object WTF!!!
-    return data
-
-
 def findchains():
-    timeout=2
+    timeout = 2
     global localhost
     # query other listed nodes in the network for copies of their blockchains
-    foreign_chains = []
+    list_of_chains = []
     for url in foreign_nodes:
         # get their chain using some sort of get request
         peer_address = url[0]
@@ -388,23 +362,37 @@ def findchains():
             # Create a socket connection.
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             try:
+                s.settimeout(timeout)
                 s.connect((peer_address, peer_port))
-                print (s)
-                data = s.recv(4096)
-                chain = json.loads(data)
                 
-                foreign_chains.append(chain)
+                print (s)
+                this_chain = []
+                while True:
+                    
+                    incomming = s.recv(4096)
+                    if not incomming:
+                        break
+                     
+                
+                    dict = pickle.loads(incomming)
+                    block_object = Block(dict) # umm maybe need dict?
+                    this_chain.append(block_object)
+
                 s.close()
+                list_of_chains.append(this_chain)
                 print ("Obtained Chain from peer " + str(peer_address) +" : "+ str(peer_port))
-            except socket.error:
+            except socket.timeout as ex:
+                print ("NR:" + str(peer_address) +" : "+ str(peer_port))
+            except socket.error as ex:
                 print ("socket error Couldn't connect with peer " + str(peer_address) +" : "+ str(peer_port))
+                raise ex
             except Exception as ex:
                 print ("Couldn't connect with peer " + str(peer_address) +" : "+ str(peer_port))
                 raise ex
    
         
         #print("NOT YET IMPLEMENTED")
-    return foreign_chains
+    return list_of_chains
 
 
 
@@ -412,18 +400,17 @@ def get_my_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.connect(("8.8.8.8", 80))
     ip = s.getsockname()[0]
-    print(ip)
     s.close()
     return ip
 
 
 # Initial Setup
 logging.basicConfig(filename=OUTPUTFNAME, filemode='a', format='%(name)s - %(levelname)s - %(message)s') # log errors to file
+miner_address = miner_address()
 blockchain = sync_local_chain() # create a list of the local blockchain
 local_transactions = [] # store transactions in a list
 foreign_nodes = sync_node_list() # store urls of other nodes in a list 
 blockchain = consensus(blockchain)
-miner_address = miner_address()
 global localhost
 localhost = get_my_ip()
 
@@ -440,11 +427,9 @@ if __name__ == "__main__":
         
         
         
-        print ("Listening on port " + str(PORT))
-        num_connections = 0
-
-        threading.Thread(target = ChainServer(localhost,PORT).listen(),args = (client,address)).start()
         
+        threading.Thread(target = ChainServer(localhost,PORT).listen(),args = (client,address)).start()
+
 
 
 
