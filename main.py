@@ -351,7 +351,6 @@ def consensus(blockchain):
         print ("COMPARE: LOCAL: " + str(len(longest_chain)) + " <VS> REMOTE: " + str(len(chain)))
         if len(longest_chain) < len(chain): # for which is the longest
             longest_chain = chain
-
             new_chain = True
     blockchain = longest_chain # set the longest list as our new local chain
     blockchain.sort(key=lambda x: x.index) # holy crap did this fix a big problem
@@ -359,7 +358,7 @@ def consensus(blockchain):
         print("NEW LONG CHAIN")
         for block in blockchain:
             filename = '%s/%s.json' % (BLOCKCHAIN_DATA_DIR, block.index)
-            if not os.path.isfile(filename):
+            if not os.path.isfile(filename): # do not write over existing block files until chain integrity check implemented
                 with open(filename, 'w') as block_file:
                     write_output("ABOPTING BLOCK:: " + str(block.__dict__()))
                     json.dump(block.__dict__(), block_file)
@@ -471,12 +470,9 @@ if __name__ == "__main__":
                 mine()
         #get_blocks()
 
-
-
-
-
     except BaseException as e:
-        logging.error(e, exc_info=True)
-        raise e
+        logging.error(e, exc_info=True) # ensure exceptions and such things are logged for prosperity
+        raise e # but still crash the program naturally
 
     print("PROGRAM COMPLETE, SERVING UNTIL MANUAL ABORT...") # final command
+    sys.exit()
