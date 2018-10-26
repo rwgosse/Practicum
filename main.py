@@ -341,20 +341,20 @@ def save_block(block):
             json.dump(block.__dict__(), block_file)
 
 def consensus(blockchain):
-    new_chain = False
+    new_chain = False # initial condition
     # Get the blocks from other nodes
     # If our chain isn't longest,
     # then we store the longest chain
-    foreign_chains = findchains()
-    longest_chain = blockchain # set our blockchain as the longest
+    foreign_chains = findchains() # query peers in the list for their chains
+    longest_chain = blockchain # set our blockchain as the initial longest
     for chain in foreign_chains: # check the list of foreign chains
         print ("COMPARE: LOCAL: " + str(len(longest_chain)) + " <VS> REMOTE: " + str(len(chain)))
-        if len(longest_chain) < len(chain): # for which is the longest
-            longest_chain = chain
+        if len(longest_chain) < len(chain): #if the incomming chain is longer than the present longest 
+            longest_chain = chain # set it as the longest_chain
             new_chain = True
     blockchain = longest_chain # set the longest list as our new local chain
     blockchain.sort(key=lambda x: x.index) # holy crap did this fix a big problem
-    if new_chain:
+    if new_chain: #check condition
         print("NEW LONG CHAIN")
         for block in blockchain:
             filename = '%s/%s.json' % (BLOCKCHAIN_DATA_DIR, block.index)
@@ -393,15 +393,36 @@ def findchains():
                     # determine break point between objects
                     # currently the server is just time.sleep(0.05) between breaks
                     #print (incomming)
-                    dict = pickle.loads(incomming)
+                    dict = pickle.loads(incomming) # create a dictionary from the stream data
                     #print(type(dict)) # should return dict
-                    block_object = Block(dict) # umm maybe need dict? yes!
+                    block_object = Block(dict) # use the dictionary to create a block object
                     #print(type(block_object)) # should return block
-                    this_chain.append(block_object)
+                    
+                    # ____________________________________________________________________________________
+                    # check for obsolete blocks in the incomming chain
+                    # we want to discard those blocks that have an 
+                    # version # less than the current version
+                    if (block_object.version == VERSION): # expected, normal 
+                        this_chain.append(block_object)
+                    elif (block_object.version > VERSION): # incomming block from higher version #
+                        this_chain.append(block_object)
+                        print ("!INCOMMING BLOCK HAS HIGHER VERSION # - UPDATE PROGRAM!")
+                    else: # the incomming block is obsolete and will not be considered # chain of fools
+                        print ("!OBSOLETE INCOMMING BLOCK - DISCARDED!")
+                    # ____________________________________________________________________________________
 
                 s.close()
-                list_of_chains.append(this_chain)
                 print ("Obtained Chain from Remote " + str(peer_address) + " : " + str(peer_port))
+                
+                
+                
+                        
+                
+                
+                list_of_chains.append(this_chain) # add incomming chain to the list of chain
+                
+                
+                
 
             except socket.timeout as ex:
                 print ("NA:" + str(peer_address) + " : " + str(peer_port))
