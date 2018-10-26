@@ -24,6 +24,8 @@ import json
 import logging
 import socket, pickle # pickle for serializing binary and string data
 import threading
+import random
+import signal
 
 # Project Meta Variables
 __author__ = "Richard W Gosse - A00246425"
@@ -36,7 +38,8 @@ NODE_LIST = "./nodes.cfg"
 USER_SETTINGS = "./user.cfg"
 HOST = '192.168.0.15'   # local address ** unused
 CHAIN_PORT = 8000 # local port for hosting of chain data
-
+DATA_DIR = 'chunkdata'
+FS_IMAGE = 'fs.img'
 
 # define a transaction
 class Transaction:
@@ -124,15 +127,89 @@ class ChainServer(object):
             raise ex
             return False
 
-class StorageNodeServer():
-    def __init__(self, host, port):
-        self.host = host
-        self.port = port
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # create socket
-        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # avoid common errors
-        self.sock.bind((self.host, self.port)) # bind the socket
+class StorageNodeMaster():
+    def __init__(self):
+        file_table = {}
+        chunk_mapping = {}
+        minions = {}
+        chunk_size = 0
+        replication_factor = 0
 
 
+    def master_read(self,fname):
+        mapping = self.file_table[fname]
+        return mapping
+        
+    def master_write(self,dest,size):
+        if self.exists(dest):
+            pass #ignore for now
+        self.file_table[dest] = []
+        num_chunks = self.calculate_number_of_chunks(size)
+        chunks = self.allocate_chunks(dest,num_chunks)
+        return chunks
+    
+    def get_file_table_entry(self,fname):
+        if fname in self.file_table:
+            return self.file_table[fname]
+        else:
+            return None
+    
+    def get_chunk_size(self):
+        return self.chunk_size
+    
+    def get_minions(self):
+        return self.minions
+    
+    def calculate_number_of_chunks(self,size):
+        return int(math.ceil(float(size)/self.block_size))
+    
+    def exists(self,fname):
+        return file in self.file_table
+    
+    def allocate_chunks(self,dest,num):
+        chunks = []
+        for i in range(0,num):
+            chunk_uuid = uuid.uuid1()
+            nodes_ids = random.sample(self.minions.keys(),self.replication_factor)
+            chunks.append((block.uuid,nodes_ids))
+            self.file_table[dest].append((block_uuid,nodes_ids))
+            return chunks 
+        
+
+
+class StorageNodeMinion():
+    def __init__(self):
+        chunks = {}
+        
+    
+    def minion_put(self,chunk_uuid, data, minions):
+        pass
+    
+    def minion_get(self,chunk_uuid):
+        pass
+    
+    def forward(self,chunk_uuid,data,minions):
+        pass
+    
+    def delete_block(self,uuid):
+        pass
+        
+
+class Client:
+    def __init__(self):
+        pass
+    
+    def get(self,master,fname):
+        pass
+    
+    def read_minion(self,block_uuid, minion):
+        pass
+    
+    def put(self,master,source,dest):
+        pass
+    
+    def send_to_minion(self,block_uuid,data,minions):
+        pass
 
 # create a new block to be the first in a new chain.
 # data here will be for the most place symbolic or otherwise meaningless.
@@ -481,12 +558,25 @@ global localhost
 localhost = get_my_ip()
 
 
+    
+    
+# signal handler to maintain local chunk file system    
+def int_handler(signal, frame):
+    pickle.dump((storage_node_master.file_table,storage_node_master.chunk_mapping),open(FS_IMAGE, 'wb'))
+    sys.exit(0)
 
-
+def set_configuration():
+    
+    if os.path.isfile(FS_IMAGE):
+        storage_node_master.file_table,storage_node_master.chunk_mapping = pickle.load(open(FS_IMAGE, 'rb'))
+    
+    
 
 if __name__ == "__main__":
 
     try:
+        set_configuration()
+        signal.signal(signal.SIGINT,int_handler) # set up handler for chunk table image
         print ("Hello World")
         print ("UPLOAD DOWNLOAD DELETE SETTINGS")
         #1/0 #test exception log
