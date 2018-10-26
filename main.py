@@ -22,7 +22,7 @@ import os.path
 import uuid # for making random UUIDs
 import json
 import logging
-import socket, pickle # ummm, must I use pickle? reconsider...
+import socket, pickle # pickle for serializing binary and string data
 import threading
 
 # Project Meta Variables
@@ -35,7 +35,7 @@ BLOCKCHAIN_DATA_DIR = 'chaindata'
 NODE_LIST = "./nodes.cfg"
 USER_SETTINGS = "./user.cfg"
 HOST = '192.168.0.15'   # local address ** unused
-PORT = 8000 # local port
+CHAIN_PORT = 8000 # local port for hosting of chain data
 
 
 # define a transaction
@@ -85,7 +85,7 @@ class ChainServer(object):
 
     def listen(self):
         # listen for incomming chain requests
-        print ("Serving Chain Requests on port " + str(PORT))
+        print ("Serving Chain Requests on port " + str(self.port))
         self.sock.listen(5) # on self.sock
         while True: #
             client, address = self.sock.accept() # accept incomming connection
@@ -123,6 +123,16 @@ class ChainServer(object):
             print ("Critical Transmission Error") # hopeful doesn't happen. FIX later to avoid catch all
             raise ex
             return False
+
+class StorageNodeServer():
+    def __init__(self, host, port):
+        self.host = host
+        self.port = port
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # create socket
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # avoid common errors
+        self.sock.bind((self.host, self.port)) # bind the socket
+
+
 
 # create a new block to be the first in a new chain.
 # data here will be for the most place symbolic or otherwise meaningless.
@@ -435,11 +445,27 @@ def findchains():
 
 
 def get_my_ip():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.connect(("8.8.8.8", 80)) # not reliable, there may not be an assumed Internet connection
-    ip = s.getsockname()[0]
-    s.close()
+    # quick & lazy implement, query google for my ip
+    #s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    #s.connect(("8.8.8.8", 80)) # not reliable, there may not be an assumed Internet connection
+    #ip = s.getsockname()[0]
+    #s.close()
+    
+    # Better, and will function on those networks without an Internet connection
+    ip = ((([ip for ip in socket.gethostbyname_ex(socket.gethostname())[2] 
+        if not ip.startswith("127.")] or [[(s.connect(("8.8.8.8", 53)), 
+        s.getsockname()[0], s.close()) 
+        for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]]) + ["no IP found"])[0])
     return ip
+
+
+ 
+
+
+
+
+
+
 
 
 # Initial Setup
@@ -466,7 +492,7 @@ if __name__ == "__main__":
         #1/0 #test exception log
 
 
-        chainserver = ChainServer(localhost, PORT)
+        chainserver = ChainServer(localhost, CHAIN_PORT)
         print ("start tests...")
 
 
