@@ -26,20 +26,46 @@ import socket, pickle # pickle for serializing binary and string data
 import threading
 import random
 import signal
+import configparser
 
 # Project Meta Variables
 __author__ = "Richard W Gosse - A00246425"
-__date__ = "$1-Oct-2018 1:02:27 PM$"
-VERSION = "0.1"
+__date__ = "$26-Oct-2018 2:09:00 PM$"
+VERSION = "0.2"
 OUTPUTFNAME = "./logfile.txt"
 #MINER_ADDRESS = "q83jv93yfnf02f8n_first_miner_nf939nf03n88fnf92n" # made unique and loads from user.cfg
 BLOCKCHAIN_DATA_DIR = 'chaindata'
-NODE_LIST = "./nodes.cfg"
-USER_SETTINGS = "./user.cfg"
+#NODE_LIST = "./nodes.cfg" # absored into settings.cfg and new parser
+#USER_SETTINGS = "./user.cfg" # absored into settings.cfg and new parser
 HOST = '192.168.0.15'   # local address ** unused
 CHAIN_PORT = 8000 # local port for hosting of chain data
 DATA_DIR = 'chunkdata'
 FS_IMAGE = 'fs.img'
+CONFIG_FILE = 'settings.cfg'
+
+
+# signal handler to maintain local chunk file system
+def int_handler(signal, frame):
+    pickle.dump((storage_node_master.file_table, storage_node_master.chunk_mapping), open(FS_IMAGE, 'wb'))
+    sys.exit(0)
+
+def set_configuration():
+    logging.basicConfig(filename=OUTPUTFNAME, filemode='a', format='%(name)s - %(levelname)s - %(message)s') # log errors to file
+    conf = configparser.ConfigParser()
+    conf.readfp(open(CONFIG_FILE))
+    miner_address = get_miner_address(conf)
+    block_size = int(conf.get('master', 'chunk_size'))
+    replication_factor = int(conf.get('master', 'replication_factor'))
+    foreign_nodes = sync_node_list(conf) # store urls of other nodes in a list
+    blockchain = sync_local_chain() # create a list of the local blockchain
+    blockchain = consensus(blockchain, foreign_nodes) # ensure that our blockchain is the longest
+
+
+
+    if os.path.isfile(FS_IMAGE):
+        storage_node_master.file_table, storage_node_master.chunk_mapping = pickle.load(open(FS_IMAGE, 'rb'))
+
+    return blockchain, miner_address
 
 # define a transaction
 class Transaction:
@@ -136,79 +162,79 @@ class StorageNodeMaster():
         replication_factor = 0
 
 
-    def master_read(self,fname):
+    def master_read(self, fname):
         mapping = self.file_table[fname]
         return mapping
-        
-    def master_write(self,dest,size):
+
+    def master_write(self, dest, size):
         if self.exists(dest):
             pass #ignore for now
         self.file_table[dest] = []
         num_chunks = self.calculate_number_of_chunks(size)
-        chunks = self.allocate_chunks(dest,num_chunks)
+        chunks = self.allocate_chunks(dest, num_chunks)
         return chunks
-    
-    def get_file_table_entry(self,fname):
+
+    def get_file_table_entry(self, fname):
         if fname in self.file_table:
             return self.file_table[fname]
         else:
             return None
-    
+
     def get_chunk_size(self):
         return self.chunk_size
-    
+
     def get_minions(self):
         return self.minions
-    
-    def calculate_number_of_chunks(self,size):
-        return int(math.ceil(float(size)/self.block_size))
-    
-    def exists(self,fname):
+
+    def calculate_number_of_chunks(self, size):
+        return int(math.ceil(float(size) / self.block_size))
+
+    def exists(self, fname):
         return file in self.file_table
-    
-    def allocate_chunks(self,dest,num):
+
+    def allocate_chunks(self, dest, num):
         chunks = []
-        for i in range(0,num):
+        for i in range(0, num):
             chunk_uuid = uuid.uuid1()
-            nodes_ids = random.sample(self.minions.keys(),self.replication_factor)
-            chunks.append((block.uuid,nodes_ids))
-            self.file_table[dest].append((block_uuid,nodes_ids))
-            return chunks 
-        
+            nodes_ids = random.sample(self.minions.keys(), self.replication_factor)
+            chunks.append((block.uuid, nodes_ids))
+            self.file_table[dest].append((block_uuid, nodes_ids))
+            return chunks
+
 
 
 class StorageNodeMinion():
     def __init__(self):
         chunks = {}
-        
-    
-    def minion_put(self,chunk_uuid, data, minions):
+
+
+    def minion_put(self, chunk_uuid, data, minions):
         pass
-    
-    def minion_get(self,chunk_uuid):
+
+    def minion_get(self, chunk_uuid):
         pass
-    
-    def forward(self,chunk_uuid,data,minions):
+
+    def forward(self, chunk_uuid, data, minions):
         pass
-    
-    def delete_block(self,uuid):
+
+    def delete_block(self, uuid):
         pass
-        
+
 
 class Client:
     def __init__(self):
         pass
-    
-    def get(self,master,fname):
+
+    def get(self, master, fname):
         pass
-    
-    def read_minion(self,block_uuid, minion):
+
+    def read_minion(self, block_uuid, minion):
         pass
-    
-    def put(self,master,source,dest):
+
+    def put(self, master, source, dest):
         pass
-    
-    def send_to_minion(self,block_uuid,data,minions):
+
+    def send_to_minion(self, block_uuid, data, minions):
         pass
 
 # create a new block to be the first in a new chain.
@@ -375,21 +401,35 @@ def mine():
         blockchain.append(new_block)
         save_block(new_block)
 
-def sync_node_list():
-    settings = []
-    for line in open(NODE_LIST, 'r'): # every line in the node.cfg file represents a node
-        parts = line.split() # return a list
-        node = [parts[0], int(parts[1])]
-        if is_ip(parts[0]): # does the address at least look like IPv4?
-            settings.append(node) # then add it to the node list
-    #print ("NODE LIST:" + str(settings)) # and advertise known nodes
-    return settings
+def sync_node_list(conf):
 
-def miner_address():
-    for line in open(USER_SETTINGS, 'r'): # every line in the node.cfg file represents a node
-        parts = line.split() # return a list
-        miner_address = str([parts[0]])
-    print ("MINER ADDRESS:" + miner_address) # and advertise known nodes
+    nodes = []
+    #for line in open(NODE_LIST, 'r'): # every line in the node.cfg file represents a node
+    #    parts = line.split() # return a list
+    #    node = [parts[0], int(parts[1])]
+    #    if is_ip(parts[0]): # does the address at least look like IPv4?
+    #        nodes.append(node) # then add it to the node list
+    node_list = conf.get('miner', 'peer_nodes').split(',')
+    for n in node_list:
+        host, port = n.split(':')
+        if is_ip(host): # does the address at least look like IPv4?
+            node = [host, int(port)]
+            nodes.append(node) # then add it to the node list
+
+
+
+
+
+
+    #print ("NODE LIST:" + str(settings)) # and advertise known nodes
+    return nodes
+
+def get_miner_address(conf):
+    #for line in open(USER_SETTINGS, 'r'): # every line in the node.cfg file represents a node
+        #   parts = line.split() # return a list
+        #   miner_address = str([parts[0]])
+    miner_address = conf.get('miner', 'miner_address')
+    write_output("MINER ADDRESS:" + miner_address) # and advertise known nodes
     return miner_address
 
 
@@ -427,22 +467,22 @@ def save_block(block):
             write_output("NEW BLOCK:: " + str(block.__dict__()))
             json.dump(block.__dict__(), block_file)
 
-def consensus(blockchain):
+def consensus(blockchain, foreign_nodes):
     new_chain = False # initial condition
     # Get the blocks from other nodes
     # If our chain isn't longest,
     # then we store the longest chain
-    foreign_chains = findchains() # query peers in the list for their chains
+    foreign_chains = findchains(foreign_nodes) # query peers in the list for their chains
     longest_chain = blockchain # set our blockchain as the initial longest
     for chain in foreign_chains: # check the list of foreign chains
-        print ("COMPARE: LOCAL: " + str(len(longest_chain)) + " <VS> REMOTE: " + str(len(chain)))
-        if len(longest_chain) < len(chain): #if the incomming chain is longer than the present longest 
+        write_output("COMPARE: LOCAL: " + str(len(longest_chain)) + " <VS> REMOTE: " + str(len(chain)))
+        if len(longest_chain) < len(chain): #if the incomming chain is longer than the present longest
             longest_chain = chain # set it as the longest_chain
             new_chain = True
     blockchain = longest_chain # set the longest list as our new local chain
     blockchain.sort(key=lambda x: x.index) # holy crap did this fix a big problem
     if new_chain: #check condition
-        print("NEW LONG CHAIN")
+        write_output("NEW LONG CHAIN")
         for block in blockchain:
             filename = '%s/%s.json' % (BLOCKCHAIN_DATA_DIR, block.index)
             if not os.path.isfile(filename): # do not write over existing block files until chain integrity check implemented
@@ -451,7 +491,7 @@ def consensus(blockchain):
                     json.dump(block.__dict__(), block_file)
     return blockchain
 
-def findchains():
+def findchains(foreign_nodes):
     timeout = 2
     global localhost
     # query other listed nodes in the network for copies of their blockchains
@@ -484,38 +524,38 @@ def findchains():
                     #print(type(dict)) # should return dict
                     block_object = Block(dict) # use the dictionary to create a block object
                     #print(type(block_object)) # should return block
-                    
+
                     # ____________________________________________________________________________________
                     # check for obsolete blocks in the incomming chain
-                    # we want to discard those blocks that have an 
+                    # we want to discard those blocks that have an
                     # version # less than the current version
-                    if (block_object.version == VERSION): # expected, normal 
+                    if (block_object.version == VERSION): # expected, normal
                         this_chain.append(block_object)
                     elif (block_object.version > VERSION): # incomming block from higher version #
                         this_chain.append(block_object)
-                        print ("!INCOMMING BLOCK HAS HIGHER VERSION # - UPDATE PROGRAM!")
+                        write_output("!INCOMMING BLOCK HAS HIGHER VERSION # - UPDATE PROGRAM!")
                     else: # the incomming block is obsolete and will not be considered # chain of fools
-                        print ("!OBSOLETE INCOMMING BLOCK - DISCARDED!")
+                        write_output("!OBSOLETE INCOMMING BLOCK - DISCARDED!")
                     # ____________________________________________________________________________________
 
                 s.close()
-                print ("Obtained Chain from Remote " + str(peer_address) + " : " + str(peer_port))
-                
-                
-                
-                        
-                
-                
+                write_output("Obtained Chain from Remote " + str(peer_address) + " : " + str(peer_port))
+
+
+
+
+
+
                 list_of_chains.append(this_chain) # add incomming chain to the list of chain
-                
-                
-                
+
+
+
 
             except socket.timeout as ex:
-                print ("NA:" + str(peer_address) + " : " + str(peer_port))
+                write_output("NA:" + str(peer_address) + " : " + str(peer_port))
 
             except socket.error as ex:
-                print ("ERR:" + str(peer_address) + " : " + str(peer_port))
+                write_output("ERR:" + str(peer_address) + " : " + str(peer_port))
 
     return list_of_chains
 
@@ -527,16 +567,16 @@ def get_my_ip():
     #s.connect(("8.8.8.8", 80)) # not reliable, there may not be an assumed Internet connection
     #ip = s.getsockname()[0]
     #s.close()
-    
+
     # Better, and will function on those networks without an Internet connection
-    ip = ((([ip for ip in socket.gethostbyname_ex(socket.gethostname())[2] 
-        if not ip.startswith("127.")] or [[(s.connect(("8.8.8.8", 53)), 
-        s.getsockname()[0], s.close()) 
-        for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]]) + ["no IP found"])[0])
+    ip = ((([ip for ip in socket.gethostbyname_ex(socket.gethostname())[2]
+          if not ip.startswith("127.")] or [[(s.connect(("8.8.8.8", 53)),
+          s.getsockname()[0], s.close())
+          for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]]) + ["no IP found"])[0])
     return ip
 
 
- 
+
 
 
 
@@ -546,44 +586,33 @@ def get_my_ip():
 
 
 # Initial Setup
-logging.basicConfig(filename=OUTPUTFNAME, filemode='a', format='%(name)s - %(levelname)s - %(message)s') # log errors to file
-miner_address = miner_address()
-foreign_nodes = sync_node_list() # store urls of other nodes in a list
-blockchain = sync_local_chain() # create a list of the local blockchain
+
 local_transactions = [] # store transactions in a list
 
-blockchain = consensus(blockchain)
+
 
 global localhost
 localhost = get_my_ip()
 
 
-    
-    
-# signal handler to maintain local chunk file system    
-def int_handler(signal, frame):
-    pickle.dump((storage_node_master.file_table,storage_node_master.chunk_mapping),open(FS_IMAGE, 'wb'))
-    sys.exit(0)
 
-def set_configuration():
-    
-    if os.path.isfile(FS_IMAGE):
-        storage_node_master.file_table,storage_node_master.chunk_mapping = pickle.load(open(FS_IMAGE, 'rb'))
-    
-    
+
+
+
 
 if __name__ == "__main__":
 
     try:
-        set_configuration()
-        signal.signal(signal.SIGINT,int_handler) # set up handler for chunk table image
+        signal.signal(signal.SIGINT, int_handler) # set up handler for chunk table image
+
+        blockchain, miner_address = set_configuration()
         print ("Hello World")
         print ("UPLOAD DOWNLOAD DELETE SETTINGS")
         #1/0 #test exception log
 
 
         chainserver = ChainServer(localhost, CHAIN_PORT)
-        print ("start tests...")
+        write_output("start tests...")
 
 
         # Test Create 10 Blocks in a row - obsolete Oct 3rd
@@ -611,5 +640,5 @@ if __name__ == "__main__":
         logging.error(e, exc_info=True) # ensure exceptions and such things are logged for prosperity
         raise e # but still crash the program naturally
 
-    print("PROGRAM COMPLETE, SERVING UNTIL MANUAL ABORT...") # final command
+    write_output("PROGRAM COMPLETE, SERVING UNTIL MANUAL ABORT...") # final command
     sys.exit()
