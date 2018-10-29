@@ -29,19 +29,23 @@ import signal
 import configparser
 
 # Project Meta Variables
-__author__ = "Richard W Gosse - A00246425"
-__date__ = "$26-Oct-2018 2:09:00 PM$"
-VERSION = "0.2"
-OUTPUTFNAME = "./logfile.txt"
+__author__ = "Richard W Gosse - A00246425" # name, student number
+__date__ = "$26-Oct-2018 2:09:00 PM$" # updated with each version change
+VERSION = "0.2" # aibitrary version number, updated manually during development, does not relate to any commits
+OUTPUTFNAME = "./logfile.txt" # output log file
 #MINER_ADDRESS = "q83jv93yfnf02f8n_first_miner_nf939nf03n88fnf92n" # made unique and loads from user.cfg
-BLOCKCHAIN_DATA_DIR = 'chaindata'
+BLOCKCHAIN_DATA_DIR = 'chaindata' # folder for json formatted blocks
 #NODE_LIST = "./nodes.cfg" # absored into settings.cfg and new parser
 #USER_SETTINGS = "./user.cfg" # absored into settings.cfg and new parser
 HOST = '192.168.0.15'   # local address ** unused
-CHAIN_PORT = 8000 # local port for hosting of chain data
-DATA_DIR = 'chunkdata'
-FS_IMAGE = 'fs.img'
-CONFIG_FILE = 'settings.cfg'
+CHAIN_PORT = 8000  # local port for hosting of chain data
+MASTER_PORT = 8100 # local port for hosting of storage master
+MINION_PORT = 8200 # local port for hosting of storage minion
+DATA_DIR = 'chunkdata' # chunk data directory
+FS_IMAGE = 'fs.img' # chunk file mapping system
+CONFIG_FILE = 'settings.cfg' # local file with settings
+SPLIT = '\n' # used to line break socket streams
+TESTFILE = 'testfile.txt'
 
 
 # signal handler to maintain local chunk file system
@@ -153,26 +157,71 @@ class ChainServer(object):
             raise ex
             return False
 
+
+# controler for storage master node
 class StorageNodeMaster():
-    def __init__(self):
+    def __init__(self, host, port):
+        self.host = host
+        self.port = port
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # create socket
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # avoid common errors
+        self.sock.bind((self.host, self.port)) # bind the socket
+        
         file_table = {}
         chunk_mapping = {}
         minions = {}
         chunk_size = 0
         replication_factor = 0
+        
+        thread = threading.Thread(target=self.listen, args=())
+        thread.daemon = False                            # Daemonize thread
+        thread.start()                                  # Start the execution
+        
+        
+    def listen(self):   
+        # we will receive either a read command or a write command
+        print ("Acting as storage master on port " + str(self.port))
+        print (self.sock)
+        self.sock.listen(5) # on self.sock
+        incomming = ''
+        while True: #
+            client, address = self.sock.accept() # accept incomming connection
+            print("incomming storage request" + client)
+            incomming += client.recv(4096)
+            if not incomming:
+                break
+                
+            if not incomming.endswith(SPLIT):
+                continue
+                
+            # determine nature of request   
+            lines = incomming.split(SPLIT)
+            if lines[0].startswith("P"): # put request
+                dest = lines[1]
+                size = lines[2]
+                threading.Thread(target=self.master_write, args=(client, address, dest, size)).start() # pass connection to a new thread
+            
+            
+            if lines[0].startswith("G"): #get request:
+                fname = line[1]
+                threading.Thread(target=self.master_read, args=(client, address, fname)).start() # pass connection to a new thread
+            
+            
 
 
-    def master_read(self, fname):
+    def master_read(self, client, address, fname):
         mapping = self.file_table[fname]
-        return mapping
+        client.sendall(mapping)
+        #return mapping
 
-    def master_write(self, dest, size):
+    def master_write(self, client, address, dest, size):
         if self.exists(dest):
             pass #ignore for now
         self.file_table[dest] = []
         num_chunks = self.calculate_number_of_chunks(size)
         chunks = self.allocate_chunks(dest, num_chunks)
-        return chunks
+        # client.sendall(chunks)
+        # return chunks
 
     def get_file_table_entry(self, fname):
         if fname in self.file_table:
@@ -202,10 +251,14 @@ class StorageNodeMaster():
             return chunks
 
 
-
+# controller for chunk storage node
 class StorageNodeMinion():
     def __init__(self):
         chunks = {}
+        
+        
+    def listen(self):
+        pass
 
 
     def minion_put(self, chunk_uuid, data, minions):
@@ -220,7 +273,7 @@ class StorageNodeMinion():
     def delete_block(self, uuid):
         pass
 
-
+# controller for client node
 class Client:
     def __init__(self):
         pass
@@ -231,11 +284,70 @@ class Client:
     def read_minion(self, block_uuid, minion):
         pass
 
-    def put(self, master, source, dest):
-        pass
+    def put(self, source):
+        timeout = 20
+        size = os.path.getsize(source)
+        
+        # SEND SOURCE AND DESTINATION TO MASTER
+        # EXPECT RETURN OF CHUNK META
+        
+        
+        master_address = '192.168.0.19'
+        master_port = MASTER_PORT
+        
+
+        # Create a socket connection.
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s.settimeout(timeout)
+            s.connect((master_address, master_port))
+            time.sleep(0.1)
+            msg = "P" + SPLIT + str(dest) + SPLIT + str(size) # squish the destination and file size together
+            s.sendall(msg)
+            # chunks = master.write(dest, size)
+            
+            
+            while True:
+                incomming = s.recv(4096) # determine a decent byte size.
+                    
+                if not incomming:
+                    break
+                # separate incomming stream to get chunk uuid and minion meta data
+                # block_size = incoming
+                
+                
+                
+        except socket.error as er:
+            raise er
+        
+        with open(source) as f:
+            for c in chunks:  # c[0] contains the uuid, c[1] contains the minion
+                data = f.read(block_size)
+                chunk_uuid = c[0]
+                
+                #minions = [master.get_minions()[_] for _ in c[1]] #wth
+                
+                send_to_minion(chunk_uuid, data, minions)
+                
+        
+        
+        
+       
 
     def send_to_minion(self, block_uuid, data, minions):
         pass
+    
+    def send_to_master(self):
+            try:
+                s.settimeout(timeout)
+                s.connect((master_address, master_port))
+                while True:
+                    incomming = s.recv(1024) # determine a decent byte size.
+                    
+                    if not incomming:
+                        break
+            except socket.error as er:
+                raise er
 
 # create a new block to be the first in a new chain.
 # data here will be for the most place symbolic or otherwise meaningless.
@@ -259,7 +371,7 @@ def write_output(output):
     print(entry)
     if os.path.isfile(OUTPUTFNAME):
         with open(OUTPUTFNAME, "a") as f:
-            f.write("\n" + entry)
+            f.write(SPLIT + entry)
     else:
         with open(OUTPUTFNAME, "a") as f:
             f.write(entry)
@@ -382,7 +494,7 @@ def mine():
 
         ### ----- PROOF OF WORK
         #proof = proof_of_work(last_block.proof) #snakecoin method. gets slower over time. +3 hrs for blocks after 24
-        proof = proof_of_work2(last_block.proof) # tdjsnelling
+        proof = proof_of_work2(last_block.proof) # tdjsnelling method, in line with common block chains
         ### ----- END PROOF OF WORK
 
 
@@ -415,11 +527,6 @@ def sync_node_list(conf):
         if is_ip(host): # does the address at least look like IPv4?
             node = [host, int(port)]
             nodes.append(node) # then add it to the node list
-
-
-
-
-
 
     #print ("NODE LIST:" + str(settings)) # and advertise known nodes
     return nodes
@@ -477,18 +584,33 @@ def consensus(blockchain, foreign_nodes):
     for chain in foreign_chains: # check the list of foreign chains
         write_output("COMPARE: LOCAL: " + str(len(longest_chain)) + " <VS> REMOTE: " + str(len(chain)))
         if len(longest_chain) < len(chain): #if the incomming chain is longer than the present longest
+        
+            # would also like to check for chains with non-current version numbers
+            # and force the adoption, since the blocks are newer than anything that
+            # could be produced locally. This may be a fringe use case. 
+            # unsure as to how to treat them as of yet.
+        
+        
             longest_chain = chain # set it as the longest_chain
             new_chain = True
     blockchain = longest_chain # set the longest list as our new local chain
     blockchain.sort(key=lambda x: x.index) # holy crap did this fix a big problem
     if new_chain: #check condition
         write_output("NEW LONG CHAIN")
+        
+        
+        
+        
         for block in blockchain:
             filename = '%s/%s.json' % (BLOCKCHAIN_DATA_DIR, block.index)
             if not os.path.isfile(filename): # do not write over existing block files until chain integrity check implemented
                 with open(filename, 'w') as block_file:
                     write_output("ABOPTING BLOCK:: " + str(block.__dict__()))
                     json.dump(block.__dict__(), block_file)
+            else: 
+                # existing block json should be handled here
+                # they shouldn't be overwritten but tagged somehow to show orphaned status
+                write_output("block "+ block.index + " already exists - abort write") # consider intregrity checks
     return blockchain
 
 def findchains(foreign_nodes):
@@ -535,6 +657,7 @@ def findchains(foreign_nodes):
                         this_chain.append(block_object)
                         write_output("!INCOMMING BLOCK HAS HIGHER VERSION # - UPDATE PROGRAM!")
                     else: # the incomming block is obsolete and will not be considered # chain of fools
+                    
                         write_output("!OBSOLETE INCOMMING BLOCK - DISCARDED!")
                     # ____________________________________________________________________________________
 
@@ -607,13 +730,30 @@ if __name__ == "__main__":
 
         blockchain, miner_address = set_configuration()
         print ("Hello World")
-        print ("UPLOAD DOWNLOAD DELETE SETTINGS")
+        print ("(p)ut  (g)et  (m)ine  e(x)it")
         #1/0 #test exception log
+        
+        
+    
 
-
-        chainserver = ChainServer(localhost, CHAIN_PORT)
+        # -----START SERVICES--------------------------------------------------
+        #chainserver = ChainServer(localhost, CHAIN_PORT)
+        
+        storage_master = StorageNodeMaster(localhost, MASTER_PORT)
+        #storage_minion = 
+        time.sleep(1)
+        client = Client()
+        
+        # ---------------------------------------------------------------------
+        
+        
+        
+        
         write_output("start tests...")
+        time.sleep(1)
+        
 
+        client.put(TESTFILE)
 
         # Test Create 10 Blocks in a row - obsolete Oct 3rd
     #    for x in range(0, 10):
@@ -625,7 +765,7 @@ if __name__ == "__main__":
     #    get_blocks()
 
         # test Create Transactions in a row
-        for x in range(0, 1): # vary second variable to test
+        for x in range(0, 0): # vary second variable to test
             u = uuid.uuid4() # create a bogus string to represent an encrypted url
             add_transaction(miner_address, u.hex) # attach the user dat
 
