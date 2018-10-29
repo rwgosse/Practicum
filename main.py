@@ -186,7 +186,7 @@ class StorageNodeMaster():
         incomming = ''
         while True: #
             client, address = self.sock.accept() # accept incomming connection
-            print("incomming storage request" + client)
+            print("incomming storage request" + str(client))
             incomming += client.recv(4096)
             if not incomming:
                 break
@@ -294,6 +294,7 @@ class Client:
         
         master_address = '192.168.0.19'
         master_port = MASTER_PORT
+        dest = 'test'
         
 
         # Create a socket connection.
@@ -315,7 +316,7 @@ class Client:
                 # separate incomming stream to get chunk uuid and minion meta data
                 # block_size = incoming
                 
-                
+        #s.close()  
                 
         except socket.error as er:
             raise er
