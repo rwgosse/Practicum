@@ -304,7 +304,7 @@ class Client:
             s.connect((master_address, master_port))
             time.sleep(0.1)
             msg = "P" + SPLIT + str(dest) + SPLIT + str(size) # squish the destination and file size together
-            s.sendall(msg)
+            s.send(msg)
             # chunks = master.write(dest, size)
             
             
