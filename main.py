@@ -51,7 +51,7 @@ TESTFILE = 'testfile.txt'
 
 # signal handler to maintain local chunk file system
 def int_handler(signal, frame):
-    pickle.dump((storage_node_master.file_table, storage_node_master.chunk_mapping), open(FS_IMAGE, 'wb'))
+    pickle.dump((storage_master.file_table, storage_master.chunk_mapping), open(FS_IMAGE, 'wb'))
     sys.exit(0)
 
 def set_configuration():
@@ -66,8 +66,8 @@ def set_configuration():
     for m in minionslist:
         id, host, port = m.split(':')
         minions[id] = (host, port)
-        
-    
+
+
     foreign_nodes = sync_node_list(conf) # store urls of other nodes in a list
     blockchain = sync_local_chain() # create a list of the local blockchain
     blockchain = consensus(blockchain, foreign_nodes) # ensure that our blockchain is the longest
@@ -178,18 +178,18 @@ class StorageNodeMaster():
         self.replication_factor = replication_factor
         self.file_table = {}
         self.chunk_mapping = {}
-        
+
         if os.path.isfile(FS_IMAGE):
             self.file_table, chunk_mapping = pickle.load(open(FS_IMAGE, 'rb'))
-        
+
         self.minions = minions
-        
+
         thread = threading.Thread(target=self.listen, args=())
         thread.daemon = False                            # Daemonize thread
         thread.start()                                  # Start the execution
-        
-        
-    def listen(self):   
+
+
+    def listen(self):
         # we will receive either a read command or a write command
         print ("Acting as storage master on port " + str(self.port))
         print (self.sock)
@@ -197,36 +197,35 @@ class StorageNodeMaster():
         incomming = ''
         while True: #
             client, address = self.sock.accept() # accept incomming connection
-            print("STORAGE ACTIVE...")
-            
+
             incomming = (client.recv(4096).decode())
             print(incomming)
             if not incomming:
                 break
-                
+
             incomming = incomming.split(SPLIT)
-                
-            # determine nature of request   
+
+            # determine nature of request
             #lines = incomming.split(SPLIT)
             if incomming[0].startswith("P"): # put request
                 print("incomming put request" + str(client))
                 dest = incomming[1]
                 size = incomming[2]
                 threading.Thread(target=self.master_write, args=(client, address, dest, size)).start() # pass connection to a new thread
-            
-            
+
+
             if incomming[0].startswith("G"): #get request:
                 print("incomming get request" + str(client))
                 fname = incomming[1]
                 threading.Thread(target=self.master_read, args=(client, address, fname)).start() # pass connection to a new thread
-            
-            
+
+
             if incomming[0].startswith("M"): #map request:
                 print("incomming map request" + str(client))
                 node_ids = incomming[1]
                 threading.Thread(target=self.get_minions, args=(client, address, node_ids)).start() # pass connection to a new thread
-            
-            
+
+
 
 
     def master_read(self, client, address, fname):
@@ -242,7 +241,7 @@ class StorageNodeMaster():
         chunks = self.allocate_chunks(dest, num_chunks)
         chunks = pickle.dumps(chunks)
         client.send(chunks)
-        
+
 
     def get_file_table_entry(self, fname):
         if fname in self.file_table:
@@ -276,8 +275,8 @@ class StorageNodeMaster():
 class StorageNodeMinion():
     def __init__(self):
         chunks = {}
-        
-        
+
+
     def listen(self):
         pass
 
@@ -308,15 +307,15 @@ class Client:
     def put(self, source):
         timeout = 20
         size = os.path.getsize(source)
-        
+
         # SEND SOURCE AND DESTINATION TO MASTER
         # EXPECT RETURN OF CHUNK META
-        
-        
-        master_address = '192.168.0.13' # oh gawd no magic variables, get rid of this ASAP!
+
+
+        master_address = '192.168.0.13' # oh gawd! no magic variables, get rid of this ASAP!
         master_port = MASTER_PORT
         dest = 'test'
-        
+
 
         # Create a socket connection.
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -325,15 +324,15 @@ class Client:
             s.connect((master_address, master_port))
             time.sleep(0.1)
             msg = "P" + SPLIT + str(dest) + SPLIT + str(size) # squish the destination and file size together
-            
+
             msg = msg.encode('utf-8') # string to bytewise
             s.send(msg)
             # chunks = master.write(dest, size)
-            
-            
+
+
             while True:
                 incomming = s.recv(4096) # determine a decent byte size.
-                    
+
                 if not incomming:
                     break
                 # separate incomming stream to get chunk uuid and minion meta data
@@ -341,28 +340,28 @@ class Client:
                 chunks = pickle.loads(incomming)
                 #print(type(chunks))
                 break
-                
-        #s.close()  
-                
+
+        #s.close()
+
         except socket.error as er:
             raise er
-        
+
         with open(source) as f:
             for c in chunks:  # c[0] contains the uuid, c[1] contains the minion
                 data = f.read(chunk_size)
                 chunk_uuid = c[0]
-                
+
                 #minions = [master.get_minions()[_] for _ in c[1]] #wth
-                print(type(minions))
+                #print(type(minions))
                 self.send_to_minion(chunk_uuid, data, minions)
-                
-        
-        
-        
-       
+
+
+
+
+
 
     def send_to_minion(self, block_uuid, data, minions):
-        print("send to minion")
+        print("CLIENT: Sending to minions")
         minion = list(minions.keys())[0]
         minion = minions[minion]
         minions = list(minions.keys())[1:]
@@ -375,21 +374,21 @@ class Client:
             timeout = 5
             minion_socket.settimeout(timeout)
             minion_socket.connect((minion_host, int(minion_port)))
-            
-            
-            
+
+
+
             #minion_socket.send
         except socket.error as er:
-            raise er
-        
-    
+            print("no contact with minion")
+
+
     def send_to_master(self):
         try:
             s.settimeout(timeout)
             s.connect((master_address, master_port))
             while True:
                 incomming = s.recv(1024) # determine a decent byte size.
-                    
+
                 if not incomming:
                     break
         except socket.error as er:
@@ -630,30 +629,30 @@ def consensus(blockchain, foreign_nodes):
     for chain in foreign_chains: # check the list of foreign chains
         write_output("COMPARE: LOCAL: " + str(len(longest_chain)) + " <VS> REMOTE: " + str(len(chain)))
         if len(longest_chain) < len(chain): #if the incomming chain is longer than the present longest
-        
+
             # would also like to check for chains with non-current version numbers
             # and force the adoption, since the blocks are newer than anything that
-            # could be produced locally. This may be a fringe use case. 
+            # could be produced locally. This may be a fringe use case.
             # unsure as to how to treat them as of yet.
-        
-        
+
+
             longest_chain = chain # set it as the longest_chain
             new_chain = True
     blockchain = longest_chain # set the longest list as our new local chain
     blockchain.sort(key=lambda x: x.index) # holy crap did this fix a big problem
     if new_chain: #check condition
         write_output("NEW LONG CHAIN")
-        
-        
-        
-        
+
+
+
+
         for block in blockchain:
             filename = '%s/%s.json' % (BLOCKCHAIN_DATA_DIR, block.index)
             if not os.path.isfile(filename): # do not write over existing block files until chain integrity check implemented
                 with open(filename, 'w') as block_file:
                     write_output("ABOPTING BLOCK:: " + str(block.__dict__()))
                     json.dump(block.__dict__(), block_file)
-            else: 
+            else:
                 # existing block json should be handled here
                 # they shouldn't be overwritten but tagged somehow to show orphaned status
                 write_output("block " + block.index + " already exists - abort write") # consider intregrity checks
@@ -703,7 +702,7 @@ def findchains(foreign_nodes):
                         this_chain.append(block_object)
                         write_output("!INCOMMING BLOCK HAS HIGHER VERSION # - UPDATE PROGRAM!")
                     else: # the incomming block is obsolete and will not be considered # chain of fools
-                    
+
                         write_output("!OBSOLETE INCOMMING BLOCK - DISCARDED!")
                     # ____________________________________________________________________________________
 
@@ -772,32 +771,33 @@ localhost = get_my_ip()
 if __name__ == "__main__":
 
     try:
-        signal.signal(signal.SIGINT, int_handler) # set up handler for chunk table image
+
 
         blockchain, miner_address, minions, chunk_size, replication_factor = set_configuration()
         print ("Hello World")
         print ("(p)ut  (g)et  (m)ine  e(x)it")
         #1/0 #test exception log
-        
-        
-    
+
+
+
 
         # -----START SERVICES--------------------------------------------------
         #chainserver = ChainServer(localhost, CHAIN_PORT)
-        
+
         storage_master = StorageNodeMaster(localhost, MASTER_PORT, minions, chunk_size, replication_factor)
-        #storage_minion = 
+        #storage_minion =
+        signal.signal(signal.SIGINT, int_handler) # set up handler for chunk table image
         time.sleep(1)
         client = Client()
-        
+
         # ---------------------------------------------------------------------
-        
-        
-        
-        
+
+
+
+
         write_output("start tests...")
         time.sleep(1)
-        
+
 
         client.put(TESTFILE)
 
