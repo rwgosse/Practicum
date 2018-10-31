@@ -271,20 +271,67 @@ class StorageNodeMaster():
             return chunks
 
 
+
+
 # controller for chunk storage node
 class StorageNodeMinion():
-    def __init__(self):
+    def __init__(self, host, port):
+        self.host = host
+        self.port = port
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # create socket
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # avoid common errors
+        self.sock.bind((self.host, self.port)) # bind the socket
         chunks = {}
+        
+        thread = threading.Thread(target=self.listen, args=())
+        thread.daemon = False                            # Daemonize thread
+        thread.start()                                  # Start the execution
 
 
     def listen(self):
-        pass
+        # we will receive either a read command or a write command
+        print ("Acting as storage minion on port " + str(self.port))
+        print (self.sock)
+        self.sock.listen(5) # on self.sock
+        incomming = ''
+        while True: #
+            client, address = self.sock.accept() # accept incomming connection
+
+            incomming = (client.recv(4096).decode())
+            #print(incomming)
+            if not incomming:
+                break
+
+            incomming = incomming.split(SPLIT)
+
+            # determine nature of request
+  
+            if incomming[0].startswith("P"): # put request
+                print("incomming put request" + str(client))
+                chunk_uuid = incomming[1]
+                data = (incomming[2]).encode('utf-8')
+
+                print(type(data))
+                minions = incomming[3]
+                #print("UUID:"+chunk_uuid)
+                #print(data)
+                
+                threading.Thread(target=self.minion_put, args=(client, chunk_uuid, data, minions)).start() # pass connection to a new thread
+
+            if incomming[0].startswith("G"): #get request:
+                print("incomming get request" + str(client))
+                chunk_uuid = incomming[1]
+                threading.Thread(target=self.minion_get, args=(client, chunk_uuid)).start() # pass connection to a new thread
 
 
-    def minion_put(self, chunk_uuid, data, minions):
-        pass
 
-    def minion_get(self, chunk_uuid):
+    def minion_put(self, client, chunk_uuid, data, minions):
+        with open(DATA_DIR+str(chunk_uuid), 'wb') as f: # open the local file
+            f.write(data) # and write the chunk data to it
+        if len(minions)>0: # are there additional minions to carry the chunk?
+            self.forward(chunk_uuid, data, minions) # then forward the chunk!
+
+    def minion_get(self, client, chunk_uuid):
         pass
 
     def forward(self, chunk_uuid, data, minions):
@@ -292,6 +339,9 @@ class StorageNodeMinion():
 
     def delete_block(self, uuid):
         pass
+
+
+
 
 # controller for client node
 class Client:
@@ -346,7 +396,7 @@ class Client:
         except socket.error as er:
             raise er
 
-        with open(source) as f:
+        with open(source, "rb") as f:
             for c in chunks:  # c[0] contains the uuid, c[1] contains the minion
                 data = f.read(chunk_size)
                 chunk_uuid = c[0]
@@ -356,17 +406,13 @@ class Client:
                 self.send_to_minion(chunk_uuid, data, minions)
 
 
-
-
-
-
-    def send_to_minion(self, block_uuid, data, minions):
+    def send_to_minion(self, chunk_uuid, data, minions):
         print("CLIENT: Sending to minions")
         minion = list(minions.keys())[0]
         minion = minions[minion]
         minions = list(minions.keys())[1:]
-        print(minion)
-        print(str(minions))
+        #print(minion)
+        #print(str(minions))
         minion_host, minion_port = minion
         # Create a socket connection.
         minion_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -374,10 +420,15 @@ class Client:
             timeout = 5
             minion_socket.settimeout(timeout)
             minion_socket.connect((minion_host, int(minion_port)))
+            
+            
 
 
-
-            #minion_socket.send
+            # put the chunk_uuid, data and minions tgether and send
+            msg = "P" + SPLIT + str(chunk_uuid) + SPLIT + str(data) + SPLIT + str(minions) # squish the destination and file size together
+            msg = msg.encode('utf-8') # string to bytewise
+            minion_socket.send(msg)
+            
         except socket.error as er:
             print("no contact with minion")
 
@@ -785,7 +836,7 @@ if __name__ == "__main__":
         #chainserver = ChainServer(localhost, CHAIN_PORT)
 
         storage_master = StorageNodeMaster(localhost, MASTER_PORT, minions, chunk_size, replication_factor)
-        #storage_minion =
+        storage_minion = StorageNodeMinion(localhost, MINION_PORT)
         signal.signal(signal.SIGINT, int_handler) # set up handler for chunk table image
         time.sleep(1)
         client = Client()
@@ -800,7 +851,8 @@ if __name__ == "__main__":
 
 
         client.put(TESTFILE)
-
+        time.sleep(1)
+        client.put(TESTFILE)
         # Test Create 10 Blocks in a row - obsolete Oct 3rd
     #    for x in range(0, 10):
     #        last_block = blockchain[len(blockchain) - 1]
