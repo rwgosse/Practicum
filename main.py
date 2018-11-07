@@ -292,7 +292,7 @@ class StorageNodeMinion():
 
 
     def incoming(self, client, address):
-        incomming_chunk = False
+
         incomming = ''
         while True:
             incomming = (client.recv(4096).decode())
@@ -305,43 +305,17 @@ class StorageNodeMinion():
             #lines = incomming.split(SPLIT)
             if incomming[0].startswith("P"): # put request
                 print("MINION: incomming put request" + str(client))
-                # msg = "P" + SPLIT + str(chunk_uuid) + SPLIT + str(minions)
                 chunk_uuid = incomming[1]
                 minions = incomming[2]
-                incomming_chunk = True
-                total_data = b''
-                while incomming_chunk:
-                    #print(incomming_chunk)
-                    size = client.recv(16) # limit length to 255 bytes size of uuid
-                    if not size:
-                        break
-                    size = int(size, 2)
-                    chunk_uuid = client.recv(size).decode() # uuid 
-                    #print(chunk_uuid)
-                    chunksize = client.recv(32).decode() # size of chunk
-                    print(chunksize)
-                    chunksize = int(chunksize, 2)
-                    chunkpath = '%s/%s' % (DATA_DIR, chunk_uuid)
-                    #chunk_to_write = open(chunkpath, 'wb')
-                    if os.path.exists(DATA_DIR):
-
-                        with open(chunkpath, 'wb') as chunk_to_write: # open the local file
-                    
-                    
-                            portion_size = 4096
-                            while chunksize > 0: # gets stuck at 33.. curious
-                                print("chunksize:" + str(chunksize))
-                                if chunksize < portion_size:
-                                    portion_size = chunksize
-                                    data = client.recv(portion_size)
-                                    total_data += data
-                                    chunk_to_write.write(data)
-                                    chunksize -= len(data)
-                               
-                            chunk_to_write.close()
-                            incomming_chunk = False
-                            print ("MINION: Received Chunk")
-                client.close()
+                chunksize = int(incomming[3])
+                data = client.recv(chunksize)
+                chunkpath = '%s/%s' % (DATA_DIR, chunk_uuid)
+                if os.path.exists(DATA_DIR):
+                    with open(chunkpath, 'wb') as chunk_to_write: # open the local file
+                        chunk_to_write.write(data)
+                        chunk_to_write.close()
+                        print ("MINION: Received Chunk")
+                
                        
                             
                             
@@ -555,34 +529,22 @@ class Client:
             minion_socket.connect((minion_host, int(minion_port)))
             print("CLIENT: Sending to minion: " + minion_host)
             # put the chunk_uuid, data and minions tgether and send
-            msg = "P" + SPLIT + str(chunk_uuid) + SPLIT + str(minions) # squish the destination and file size together
+            
+            
+            
+            # START META DATA
+            msg = "P" + SPLIT,
+            str(chunk_uuid) + SPLIT, 
+            str(minions) + SPLIT, # squish the destination and file size together
+            str(sys.getsizeof(data))
             msg = msg.encode('utf-8') # string to bytewise
             minion_socket.send(msg)
+            
             time.sleep(0.1)
-            # finally send data
+
             
-            
-            ## start chunksize
-            namesize = len(str(chunk_uuid))
-            namesize = bin(namesize)[2:].zfill(16) # encode filename as 16 bit binary
-            minion_socket.send(namesize.encode('utf-8'))
-            time.sleep(0.1)
-            minion_socket.send(str(chunk_uuid).encode('utf-8'))
-            time.sleep(0.1)
-            
-			
-            #chunksize = os.path.getsize(data)# fix this shit 
-            chunksize = sys.getsizeof(data)
-            #print(chunksize)
-            chunksize = bin(chunksize)[2:].zfill(32) # encode filesize as 32 bit binary
-            print("client sending:" + str(chunksize))
-            minion_socket.send(str(chunksize).encode('utf-8'))
-            time.sleep(0.1)
-            
-            
-            
-            
-            minion_socket.send(data)
+            # START ACTUAL CHUNK DATA
+            minion_socket.sendall(data)
             
             
         except socket.error as er:
