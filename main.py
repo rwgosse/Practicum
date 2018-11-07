@@ -61,6 +61,7 @@ def set_configuration():
     miner_address = get_miner_address(conf)
     chunk_size = int(conf.get('master', 'chunk_size'))
     replication_factor = int(conf.get('master', 'replication_factor'))
+    master_address, master_port = get_master_address(conf)
     minions = {}
     minionslist = conf.get('master', 'minions').split(',')
     for m in minionslist:
@@ -77,7 +78,7 @@ def set_configuration():
     if os.path.isfile(FS_IMAGE):
         storage_node_master.file_table, storage_node_master.chunk_mapping = pickle.load(open(FS_IMAGE, 'rb'))
 
-    return blockchain, miner_address, minions, chunk_size, replication_factor
+    return blockchain, miner_address, master_address, master_port, minions, chunk_size, replication_factor
 
 # define a transaction
 class Transaction:
@@ -288,47 +289,72 @@ class StorageNodeMinion():
         thread.start()                                  # Start the execution
 
 
+    def incoming(self, client, address):
+        while True:
+            size = client.recv(16) # limit length to 255 bytes
+            if not size:
+                break
+            size = int(size, 2)
+            filename = client.recv(size)
+            filesize = client.recv(32)
+            filesize = int(filesize, 2)
+            file_to_write = open(filename, 'wb')
+            chunksize = 4096
+            while filesize > 0:
+                if filesize < chunksize:
+                    chunksize = filesize
+                data = client.recv(chunksize)
+                file_to_write.write(data)
+                filesize -= len(data)
+            file_to_write.close()
+
     def listen(self):
         # we will receive either a read command or a write command
         print ("Acting as storage minion on port " + str(self.port))
         print (self.sock)
         self.sock.listen(5) # on self.sock
-        incomming = ''
         while True: #
             client, address = self.sock.accept() # accept incomming connection
+            threading.Thread(target=self.incoming, args=(client, address)).start
+        sock.close()
+            
+            
+            
+            
+            
 
-            incomming = (client.recv(4096).decode())
-            #print(incomming)
-            if not incomming:
-                break
-
-            incomming = incomming.split(SPLIT)
-
-            # determine nature of request
-  
-            if incomming[0].startswith("P"): # put request
-                print("incomming put request" + str(client))
-                chunk_uuid = incomming[1]
-                data = (incomming[2]).encode('utf-8')
-
-                print(type(data))
-                minions = incomming[3]
-                #print("UUID:"+chunk_uuid)
-                #print(data)
-                
-                threading.Thread(target=self.minion_put, args=(client, chunk_uuid, data, minions)).start() # pass connection to a new thread
-
-            if incomming[0].startswith("G"): #get request:
-                print("incomming get request" + str(client))
-                chunk_uuid = incomming[1]
-                threading.Thread(target=self.minion_get, args=(client, chunk_uuid)).start() # pass connection to a new thread
+#            incomming = (client.recv(4096).decode())
+#            
+#    
+#            
+#            #print(incomming)
+#            if not incomming:
+#                break
+#
+#            incomming = incomming.split(SPLIT)
+#
+#            # determine nature of request
+#  
+#            if incomming[0].startswith("P"): # put request
+#                print("incomming put request" + str(client))
+#                chunk_uuid = incomming[1]
+#                minions = incomming[2]
+#                data = client.recv(4096)
+#
+#                
+#                threading.Thread(target=self.minion_put, args=(client, chunk_uuid, data, minions)).start() # pass connection to a new thread
+#
+#            if incomming[0].startswith("G"): #get request:
+#                print("incomming get request" + str(client))
+#                chunk_uuid = incomming[1]
+#                threading.Thread(target=self.minion_get, args=(client, chunk_uuid)).start() # pass connection to a new thread
 
 
 
     def minion_put(self, client, chunk_uuid, data, minions):
-        with open(DATA_DIR+str(chunk_uuid), 'wb') as f: # open the local file
+        with open(DATA_DIR + str(chunk_uuid), 'wb') as f: # open the local file
             f.write(data) # and write the chunk data to it
-        if len(minions)>0: # are there additional minions to carry the chunk?
+        if len(minions) > 0: # are there additional minions to carry the chunk?
             self.forward(chunk_uuid, data, minions) # then forward the chunk!
 
     def minion_get(self, client, chunk_uuid):
@@ -361,9 +387,10 @@ class Client:
         # SEND SOURCE AND DESTINATION TO MASTER
         # EXPECT RETURN OF CHUNK META
 
-
-        master_address = '192.168.0.13' # oh gawd! no magic variables, get rid of this ASAP!
-        master_port = MASTER_PORT
+        global master_address
+        global master_port
+        #master_address = '192.168.0.13' # oh gawd! no magic variables, get rid of this ASAP!
+        #master_port = MASTER_PORT
         dest = 'test'
 
 
@@ -371,6 +398,8 @@ class Client:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             s.settimeout(timeout)
+            print(master_address)
+            print(master_port)
             s.connect((master_address, master_port))
             time.sleep(0.1)
             msg = "P" + SPLIT + str(dest) + SPLIT + str(size) # squish the destination and file size together
@@ -635,6 +664,14 @@ def get_miner_address(conf):
     write_output("MINER ADDRESS:" + miner_address) # and advertise known nodes
     return miner_address
 
+def get_master_address(conf):
+    #for line in open(USER_SETTINGS, 'r'): # every line in the node.cfg file represents a node
+        #   parts = line.split() # return a list
+        #   miner_address = str([parts[0]])
+    master_address = conf.get('client', 'master_address')
+    num, master_address, master_host = master_address.split(':')
+    write_output("MASTER ADDRESS:" + master_address) # and advertise known nodes
+    return master_address, int(master_host)
 
 def sync_local_chain():
 
@@ -822,9 +859,13 @@ localhost = get_my_ip()
 if __name__ == "__main__":
 
     try:
+        #global blockchain
+        #global miner_address
+        global master_address
+        global master_port
 
 
-        blockchain, miner_address, minions, chunk_size, replication_factor = set_configuration()
+        blockchain, miner_address, master_address, master_port, minions, chunk_size, replication_factor = set_configuration()
         print ("Hello World")
         print ("(p)ut  (g)et  (m)ine  e(x)it")
         #1/0 #test exception log
