@@ -321,7 +321,7 @@ class StorageNodeMinion():
                     chunksize = client.recv(32)
                     print(chunksize)
                     chunksize = int(chunksize, 2)
-                    chunkpath = '%s/%s' % (DATA_DIR, str(chunk_uuid))
+                    chunkpath = '%s/%s' % (DATA_DIR, chunk_uuid.uuid)
                     #chunk_to_write = open(chunkpath, 'wb')
                     if os.path.exists(DATA_DIR):
 
@@ -342,8 +342,8 @@ class StorageNodeMinion():
                                     count += 1
                                
                             chunk_to_write.close()
-                        incomming_chunk = False
-                        print ("MINION: Received Chunk")
+                            incomming_chunk = False
+                            print ("MINION: Received Chunk")
                 client.close()
                        
                             
