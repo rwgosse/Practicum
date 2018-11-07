@@ -298,7 +298,7 @@ class StorageNodeMinion():
             incomming = (client.recv(4096).decode())
             if not incomming:
                 break
-            print("MINION:incomming")
+            #print("MINION:incomming")
             incomming = incomming.split(SPLIT)
             
             # determine nature of request
@@ -308,9 +308,10 @@ class StorageNodeMinion():
                 # msg = "P" + SPLIT + str(chunk_uuid) + SPLIT + str(minions)
                 chunk_uuid = incomming[1]
                 minions = incomming[2]
-                incomming_file = True
+                incomming_chunk = True
                 total_data = b''
                 while incomming_chunk:
+                    #print(incomming_chunk)
                     size = client.recv(16) # limit length to 255 bytes
                     if not size:
                         break
