@@ -323,25 +323,28 @@ class StorageNodeMinion():
                     chunksize = int(chunksize, 2)
                     chunk_to_write = open(DATA_DIR + str(chunk_uuid), 'wb')
                     portion_size = 4096
+                    count = 1
                     while chunksize > 0:
+                        print("rec count:" + count)
                         if chunksize < portion_size:
                             portion_size = chunksize
                             data = client.recv(portion_size)
                             total_data += data
                             chunk_to_write.write(data)
                             chunksize -= len(data)
-                            chunk_to_write.close()
-                            print ("MINION: Received Chunk")
-                            client.close()
-                            incomming_chunk = False
+                    chunk_to_write.close()
+                    incomming_chunk = False
+                    print ("MINION: Received Chunk")
+                client.close()
+                            
                 #incomming_data = b'' # not sure how to declare here
                 #incomming_data =+ client.recv(4096)
                 #self.minion_put(chunk_uuid, data, minions)
                 #with open(DATA_DIR + str(chunk_uuid), 'wb') as f: # open the local file
                     #f.write(data) # and write the chunk data to it
             
-                    if len(minions) > 0: # are there additional minions to carry the chunk?
-                        self.forward(chunk_uuid, total_data, minions) # then forward the chunk!
+                if len(minions) > 0: # are there additional minions to carry the chunk?
+                    self.forward(chunk_uuid, total_data, minions) # then forward the chunk!
                 
                 
             #threading.Thread(target=self.master_write, args=(client, address, dest, size)).start() # pass connection to a new thread
@@ -434,6 +437,7 @@ class StorageNodeMinion():
         pass
 
     def forward(self, chunk_uuid, data, minions):
+        print("MINION: forwarding not implemented yet")
         pass
 
     def delete_block(self, uuid):
