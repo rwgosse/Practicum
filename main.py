@@ -322,22 +322,23 @@ class StorageNodeMinion():
                     print(chunksize)
                     chunksize = int(chunksize, 2)
                     chunkpath = '%s/%s' % (DATA_DIR, str(chunk_uuid))
-                    chunk_to_write = open(chunkpath, 'wb')
+                    #chunk_to_write = open(chunkpath, 'wb')
+                    with open(chunkpath, 'wb') as chunk_to_write: # open the local file
                     
                     
-                    
-                    portion_size = 4096
-                    count = 1
-                    while chunksize > 0:
-                        print("rec count:" + str(count))
-                        print("chunksize:" + str(chunksize))
-                        if chunksize < portion_size:
-                            portion_size = chunksize
-                            data = client.recv(portion_size)
-                            total_data += data
-                            chunk_to_write.write(data)
-                            chunksize -= len(data)
-                            count += 1
+                        portion_size = 4096
+                        count = 1
+                        while chunksize > 0:
+                            print("rec count:" + str(count))
+                            print("chunksize:" + str(chunksize))
+                            if chunksize < portion_size:
+                                portion_size = chunksize
+                                data = client.recv(portion_size)
+                                total_data += data
+                                chunk_to_write.write(data)
+                                chunksize -= len(data)
+                                count += 1
+                               
                     chunk_to_write.close()
                     incomming_chunk = False
                     print ("MINION: Received Chunk")
