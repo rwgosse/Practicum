@@ -266,7 +266,7 @@ class StorageNodeMaster():
         chunks = []
         for i in range(0, num):
             chunk_uuid = uuid.uuid1()
-            print(self.minions.keys())
+            #print(self.minions.keys())
             
             nodes_ids = random.sample(self.minions.keys(), self.replication_factor) # do ensure more minions than replication factor
             chunks.append((chunk_uuid, nodes_ids))
@@ -292,7 +292,7 @@ class StorageNodeMinion():
 
 
     def incoming(self, client, address):
-        print("MINION: incoming from" + client)
+
         incomming = ''
         while true:
             incomming = (client.recv(4096).decode())
