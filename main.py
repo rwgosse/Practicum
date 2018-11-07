@@ -318,7 +318,7 @@ class StorageNodeMinion():
                     size = int(size, 2)
                     chunk_uuid = client.recv(size).decode() # uuid 
                     #print(chunk_uuid)
-                    chunksize = client.recv(32) # size of chunk
+                    chunksize = client.recv(32).decode() # size of chunk
                     print(chunksize)
                     chunksize = int(chunksize, 2)
                     chunkpath = '%s/%s' % (DATA_DIR, chunk_uuid)
@@ -566,7 +566,9 @@ class Client:
             namesize = len(str(chunk_uuid))
             namesize = bin(namesize)[2:].zfill(16) # encode filename as 16 bit binary
             minion_socket.send(namesize.encode('utf-8'))
+            time.sleep(0.1)
             minion_socket.send(str(chunk_uuid).encode('utf-8'))
+            time.sleep(0.1)
             
 			
             #chunksize = os.path.getsize(data)# fix this shit 
@@ -575,11 +577,12 @@ class Client:
             chunksize = bin(chunksize)[2:].zfill(32) # encode filesize as 32 bit binary
             print("client sending:" + str(chunksize))
             minion_socket.send(str(chunksize).encode('utf-8'))
+            time.sleep(0.1)
             
             
             
             
-            minion_socket.sendall(data)
+            minion_socket.send(data)
             
             
         except socket.error as er:
