@@ -316,12 +316,12 @@ class StorageNodeMinion():
                     if not size:
                         break
                     size = int(size, 2)
-                    chunk_uuid = client.recv(size)
+                    chunk_uuid = client.recv(size).decode()
                     #print(chunk_uuid)
                     chunksize = client.recv(32)
                     print(chunksize)
                     chunksize = int(chunksize, 2)
-                    chunkpath = '%s/%s' % (DATA_DIR, chunk_uuid.uuid)
+                    chunkpath = '%s/%s' % (DATA_DIR, chunk_uuid)
                     #chunk_to_write = open(chunkpath, 'wb')
                     if os.path.exists(DATA_DIR):
 
