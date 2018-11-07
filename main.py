@@ -329,9 +329,7 @@ class StorageNodeMinion():
                     
                     
                             portion_size = 4096
-                            count = 1
-                            while chunksize > 0:
-                                print("rec count:" + str(count))
+                            while chunksize > 0: # gets stuck at 33.. curious
                                 print("chunksize:" + str(chunksize))
                                 if chunksize < portion_size:
                                     portion_size = chunksize
@@ -339,7 +337,6 @@ class StorageNodeMinion():
                                     total_data += data
                                     chunk_to_write.write(data)
                                     chunksize -= len(data)
-                                    count += 1
                                
                             chunk_to_write.close()
                             incomming_chunk = False
@@ -566,9 +563,9 @@ class Client:
             
             
             ## start chunksize
-            size = len(str(chunk_uuid))
-            size = bin(size)[2:].zfill(16) # encode filename as 16 bit binary
-            minion_socket.send(size.encode('utf-8'))
+            namesize = len(str(chunk_uuid))
+            namesize = bin(namesize)[2:].zfill(16) # encode filename as 16 bit binary
+            minion_socket.send(namesize.encode('utf-8'))
             minion_socket.send(str(chunk_uuid).encode('utf-8'))
             
 			
