@@ -316,13 +316,15 @@ class StorageNodeMinion():
                         break
                     size = int(size, 2)
                     chunk_uuid = client.recv(size)
+                    #print(chunk_uuid)
                     chunksize = client.recv(32)
+                    print(chunksize)
                     chunksize = int(chunksize, 2)
                     file_to_write = open(DATA_DIR + str(chunk_uuid), 'wb')
                     portion_size = 4096
                     while chunksize > 0:
                         if filesize < portion_size:
-                            chunksize = chunksize
+                            portion_size = chunksize
                             data = client.recv(portion_size)
                             total_data += data
                             file_to_write.write(data)
@@ -537,11 +539,12 @@ class Client:
             size = bin(size)[2:].zfill(16) # encode filename as 16 bit binary
             minion_socket.send(size.encode('utf-8'))
             minion_socket.send(str(chunk_uuid).encode('utf-8'))
-			
-            chunksize = os.path.getsize(data)
             
+			
+            #chunksize = os.path.getsize(data)# fix this shit 
+            chunksize = sys.getsizeof(data)
             chunksize = bin(chunksize)[2:].zfill(32) # encode filesize as 32 bit binary
-            minion_socket.send(chunksize)
+            minion_socket.send(str(chunksize).encode('utf-8'))
             
             
             
