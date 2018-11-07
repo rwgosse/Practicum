@@ -543,7 +543,9 @@ class Client:
 			
             #chunksize = os.path.getsize(data)# fix this shit 
             chunksize = sys.getsizeof(data)
+            print(chunksize)
             chunksize = bin(chunksize)[2:].zfill(32) # encode filesize as 32 bit binary
+            print(chunksize)
             minion_socket.send(str(chunksize).encode('utf-8'))
             
             
