@@ -229,9 +229,6 @@ class StorageNodeMaster():
                 node_ids = incomming[1]
                 threading.Thread(target=self.get_minions, args=(client, address, node_ids)).start() # pass connection to a new thread
 
-
-
-
     def master_read(self, client, address, fname):
         mapping = self.file_table[fname]
         client.sendall(mapping)
@@ -269,7 +266,9 @@ class StorageNodeMaster():
         chunks = []
         for i in range(0, num):
             chunk_uuid = uuid.uuid1()
-            nodes_ids = random.sample(self.minions.keys(), self.replication_factor)
+            print(self.minions.keys())
+            
+            nodes_ids = random.sample(self.minions.keys(), self.replication_factor) # do ensure more minions than replication factor
             chunks.append((chunk_uuid, nodes_ids))
             self.file_table[dest].append((chunk_uuid, nodes_ids))
             return chunks
@@ -293,6 +292,7 @@ class StorageNodeMinion():
 
 
     def incoming(self, client, address):
+        print("MINION: incoming from" + client)
         while True:
             size = client.recv(16) # limit length to 255 bytes
             if not size:
@@ -882,10 +882,10 @@ if __name__ == "__main__":
 
         # -----START SERVICES--------------------------------------------------
         #chainserver = ChainServer(localhost, CHAIN_PORT)
-
+        signal.signal(signal.SIGINT, int_handler) # set up handler for chunk table image
         storage_master = StorageNodeMaster(localhost, MASTER_PORT, minions, chunk_size, replication_factor)
         storage_minion = StorageNodeMinion(localhost, MINION_PORT)
-        signal.signal(signal.SIGINT, int_handler) # set up handler for chunk table image
+        
         time.sleep(1)
         client = Client()
 
@@ -899,8 +899,8 @@ if __name__ == "__main__":
 
 
         client.put(TESTFILE)
-        time.sleep(1)
-        client.put(TESTFILE)
+        #time.sleep(1)
+        #client.put(TESTFILE)
         # Test Create 10 Blocks in a row - obsolete Oct 3rd
     #    for x in range(0, 10):
     #        last_block = blockchain[len(blockchain) - 1]
