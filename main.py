@@ -533,10 +533,9 @@ class Client:
             
             
             # START META DATA
-            msg = "P" + SPLIT,
-            str(chunk_uuid) + SPLIT, 
-            str(minions) + SPLIT, # squish the destination and file size together
-            str(sys.getsizeof(data))
+            msg = "P" + SPLIT + str(chunk_uuid) + SPLIT + str(minions) + SPLIT + str(sys.getsizeof(data))
+            
+            
             msg = msg.encode('utf-8') # string to bytewise
             minion_socket.send(msg)
             
