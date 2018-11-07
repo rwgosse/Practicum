@@ -535,8 +535,8 @@ class Client:
             ## start chunksize
             size = len(str(chunk_uuid))
             size = bin(size)[2:].zfill(16) # encode filename as 16 bit binary
-            minion_socket.send(size)
-            minion_socket.send(str(chunk_uuid))
+            minion_socket.send(size.encode('utf-8'))
+            minion_socket.send(str(chunk_uuid).encode('utf-8'))
 			
             chunksize = os.path.getsize(data)
             
