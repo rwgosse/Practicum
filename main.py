@@ -294,7 +294,7 @@ class StorageNodeMinion():
     def incoming(self, client, address):
 
         incomming = ''
-        while true:
+        while True:
             incomming = (client.recv(4096).decode())
             if not incomming:
                 break
