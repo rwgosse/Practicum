@@ -323,25 +323,27 @@ class StorageNodeMinion():
                     chunksize = int(chunksize, 2)
                     chunkpath = '%s/%s' % (DATA_DIR, str(chunk_uuid))
                     #chunk_to_write = open(chunkpath, 'wb')
-                    with open(chunkpath, 'wb') as chunk_to_write: # open the local file
+                    if os.path.exists(DATA_DIR):
+
+                        with open(chunkpath, 'wb') as chunk_to_write: # open the local file
                     
                     
-                        portion_size = 4096
-                        count = 1
-                        while chunksize > 0:
-                            print("rec count:" + str(count))
-                            print("chunksize:" + str(chunksize))
-                            if chunksize < portion_size:
-                                portion_size = chunksize
-                                data = client.recv(portion_size)
-                                total_data += data
-                                chunk_to_write.write(data)
-                                chunksize -= len(data)
-                                count += 1
+                            portion_size = 4096
+                            count = 1
+                            while chunksize > 0:
+                                print("rec count:" + str(count))
+                                print("chunksize:" + str(chunksize))
+                                if chunksize < portion_size:
+                                    portion_size = chunksize
+                                    data = client.recv(portion_size)
+                                    total_data += data
+                                    chunk_to_write.write(data)
+                                    chunksize -= len(data)
+                                    count += 1
                                
-                    chunk_to_write.close()
-                    incomming_chunk = False
-                    print ("MINION: Received Chunk")
+                            chunk_to_write.close()
+                        incomming_chunk = False
+                        print ("MINION: Received Chunk")
                 client.close()
                        
                             
@@ -401,6 +403,15 @@ class StorageNodeMinion():
 
     def listen(self):
         # we will receive either a read command or a write command
+        
+        if not os.path.exists(DATA_DIR): # is there no local chunk folder?
+            os.mkdir(DATA_DIR)
+            
+        
+    
+        
+        
+        
         print ("Acting as storage minion on port " + str(self.port))
         print (self.sock)
         self.sock.listen(5) # on self.sock
