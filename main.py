@@ -321,21 +321,30 @@ class StorageNodeMinion():
                     chunksize = client.recv(32)
                     print(chunksize)
                     chunksize = int(chunksize, 2)
-                    chunk_to_write = open(DATA_DIR + str(chunk_uuid), 'wb')
+                    chunkpath = '%s/%s' % (DATA_DIR, str(chunk_uuid))
+                    chunk_to_write = open(chunkpath, 'wb')
+                    
+                    
+                    
                     portion_size = 4096
                     count = 1
                     while chunksize > 0:
-                        print("rec count:" + count)
+                        print("rec count:" + str(count))
+                        print("chunksize:" + str(chunksize))
                         if chunksize < portion_size:
                             portion_size = chunksize
                             data = client.recv(portion_size)
                             total_data += data
                             chunk_to_write.write(data)
                             chunksize -= len(data)
+                            count += 1
                     chunk_to_write.close()
                     incomming_chunk = False
                     print ("MINION: Received Chunk")
                 client.close()
+                       
+                            
+                            
                             
                 #incomming_data = b'' # not sure how to declare here
                 #incomming_data =+ client.recv(4096)
@@ -348,6 +357,11 @@ class StorageNodeMinion():
                 
                 
             #threading.Thread(target=self.master_write, args=(client, address, dest, size)).start() # pass connection to a new thread
+
+
+
+
+
 
 
             if incomming[0].startswith("G"): #get request:
