@@ -327,7 +327,7 @@ class StorageNodeMinion():
                     #f.write(data) # and write the chunk data to it
             
                 if len(minions) > 0: # are there additional minions to carry the chunk?
-                    self.forward(chunk_uuid, total_data, minions) # then forward the chunk!
+                    self.forward(chunk_uuid, data, minions) # then forward the chunk!
                 
                 
             #threading.Thread(target=self.master_write, args=(client, address, dest, size)).start() # pass connection to a new thread
