@@ -312,13 +312,13 @@ class StorageNodeMinion():
                 total_data = b''
                 while incomming_chunk:
                     #print(incomming_chunk)
-                    size = client.recv(16) # limit length to 255 bytes
+                    size = client.recv(16) # limit length to 255 bytes size of uuid
                     if not size:
                         break
                     size = int(size, 2)
-                    chunk_uuid = client.recv(size).decode()
+                    chunk_uuid = client.recv(size).decode() # uuid 
                     #print(chunk_uuid)
-                    chunksize = client.recv(32)
+                    chunksize = client.recv(32) # size of chunk
                     print(chunksize)
                     chunksize = int(chunksize, 2)
                     chunkpath = '%s/%s' % (DATA_DIR, chunk_uuid)
@@ -571,9 +571,9 @@ class Client:
 			
             #chunksize = os.path.getsize(data)# fix this shit 
             chunksize = sys.getsizeof(data)
-            print(chunksize)
+            #print(chunksize)
             chunksize = bin(chunksize)[2:].zfill(32) # encode filesize as 32 bit binary
-            print(chunksize)
+            print("client sending:" + str(chunksize))
             minion_socket.send(str(chunksize).encode('utf-8'))
             
             
