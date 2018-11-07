@@ -292,7 +292,7 @@ class StorageNodeMinion():
 
 
     def incoming(self, client, address):
-        incomming_file = False
+        incomming_chunk = False
         incomming = ''
         while True:
             incomming = (client.recv(4096).decode())
@@ -310,7 +310,7 @@ class StorageNodeMinion():
                 minions = incomming[2]
                 incomming_file = True
                 total_data = b''
-                while incomming_file:
+                while incomming_chunk:
                     size = client.recv(16) # limit length to 255 bytes
                     if not size:
                         break
@@ -320,19 +320,19 @@ class StorageNodeMinion():
                     chunksize = client.recv(32)
                     print(chunksize)
                     chunksize = int(chunksize, 2)
-                    file_to_write = open(DATA_DIR + str(chunk_uuid), 'wb')
+                    chunk_to_write = open(DATA_DIR + str(chunk_uuid), 'wb')
                     portion_size = 4096
                     while chunksize > 0:
                         if chunksize < portion_size:
                             portion_size = chunksize
                             data = client.recv(portion_size)
                             total_data += data
-                            file_to_write.write(data)
-                            filesize -= len(data)
-                            file_to_write.close()
+                            chunk_to_write.write(data)
+                            chunksize -= len(data)
+                            chunk_to_write.close()
                             print ("MINION: Received Chunk")
                             client.close()
-                            incomming_file = False
+                            incomming_chunk = False
                 #incomming_data = b'' # not sure how to declare here
                 #incomming_data =+ client.recv(4096)
                 #self.minion_put(chunk_uuid, data, minions)
