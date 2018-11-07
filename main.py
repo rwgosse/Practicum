@@ -323,7 +323,7 @@ class StorageNodeMinion():
                     file_to_write = open(DATA_DIR + str(chunk_uuid), 'wb')
                     portion_size = 4096
                     while chunksize > 0:
-                        if filesize < portion_size:
+                        if chunksize < portion_size:
                             portion_size = chunksize
                             data = client.recv(portion_size)
                             total_data += data
