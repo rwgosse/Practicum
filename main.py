@@ -75,8 +75,8 @@ def set_configuration():
 
 
 
-    if os.path.isfile(FS_IMAGE):
-        storage_node_master.file_table, storage_node_master.chunk_mapping = pickle.load(open(FS_IMAGE, 'rb'))
+    #if os.path.isfile(FS_IMAGE): #moved
+    #    storage_master.file_table, storage_master.chunk_mapping = pickle.load(open(FS_IMAGE, 'rb')) #moved
 
     return blockchain, miner_address, master_address, master_port, minions, chunk_size, replication_factor
 
@@ -182,6 +182,9 @@ class StorageNodeMaster():
 
         if os.path.isfile(FS_IMAGE):
             self.file_table, chunk_mapping = pickle.load(open(FS_IMAGE, 'rb'))
+            
+        #if os.path.isfile(FS_IMAGE):
+        #storage_master.file_table, storage_master.chunk_mapping = pickle.load(open(FS_IMAGE, 'rb'))
 
         self.minions = minions
 
@@ -383,6 +386,7 @@ class Client:
     def put(self, source):
         timeout = 20
         size = os.path.getsize(source)
+        chunks = ''
 
         # SEND SOURCE AND DESTINATION TO MASTER
         # EXPECT RETURN OF CHUNK META
@@ -391,15 +395,15 @@ class Client:
         global master_port
         #master_address = '192.168.0.13' # oh gawd! no magic variables, get rid of this ASAP!
         #master_port = MASTER_PORT
-        dest = 'test'
+        dest = 'test' # junk data string
 
 
         # Create a socket connection.
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             s.settimeout(timeout)
-            print(master_address)
-            print(master_port)
+            #print(master_address)
+            #print(master_port)
             s.connect((master_address, master_port))
             time.sleep(0.1)
             msg = "P" + SPLIT + str(dest) + SPLIT + str(size) # squish the destination and file size together
@@ -423,16 +427,19 @@ class Client:
         #s.close()
 
         except socket.error as er:
-            raise er
+            print("failed to connect with master")
+            #raise er
+            
+            
+        if (chunks):
+            with open(source, "rb") as f:
+                for c in chunks:  # c[0] contains the uuid, c[1] contains the minion
+                    data = f.read(chunk_size)
+                    chunk_uuid = c[0]
 
-        with open(source, "rb") as f:
-            for c in chunks:  # c[0] contains the uuid, c[1] contains the minion
-                data = f.read(chunk_size)
-                chunk_uuid = c[0]
-
-                #minions = [master.get_minions()[_] for _ in c[1]] #wth
-                #print(type(minions))
-                self.send_to_minion(chunk_uuid, data, minions)
+                    #minions = [master.get_minions()[_] for _ in c[1]] #wth
+                    #print(type(minions))
+                    self.send_to_minion(chunk_uuid, data, minions)
 
 
     def send_to_minion(self, chunk_uuid, data, minions):
