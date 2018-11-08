@@ -295,7 +295,7 @@ class StorageNodeMinion():
 
         incomming = ''
         while True:
-            incomming = (client.recv(4096).decode())
+            incomming = (client.recv(1024).decode())
             if not incomming:
                 break
             #print("MINION:incomming")
@@ -315,24 +315,11 @@ class StorageNodeMinion():
                         chunk_to_write.write(data)
                         chunk_to_write.close()
                         write_output("MINION: Received Chunk")
-                
-                       
-                            
-                            
-                            
-                #incomming_data = b'' # not sure how to declare here
-                #incomming_data =+ client.recv(4096)
-                #self.minion_put(chunk_uuid, data, minions)
-                #with open(DATA_DIR + str(chunk_uuid), 'wb') as f: # open the local file
-                    #f.write(data) # and write the chunk data to it
-            
                 if len(minions) > 0: # are there additional minions to carry the chunk?
                     self.forward(chunk_uuid, data, minions) # then forward the chunk!
+                client.close()
+                break
                 
-                
-            #threading.Thread(target=self.master_write, args=(client, address, dest, size)).start() # pass connection to a new thread
-
-
 
 
 
