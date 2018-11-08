@@ -775,7 +775,7 @@ def consensus(blockchain, foreign_nodes):
             else:
                 # existing block json should be handled here
                 # they shouldn't be overwritten but tagged somehow to show orphaned status
-                write_output("block " + block.index + " already exists - abort write") # consider intregrity checks
+                write_output("block " + str(block.index) + " already exists - abort write") # consider intregrity checks
     return blockchain
 
 def findchains(foreign_nodes):
