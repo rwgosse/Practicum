@@ -47,6 +47,10 @@ FS_IMAGE = 'fs.img' # chunk file mapping system
 CONFIG_FILE = 'settings.cfg' # local file with settings
 SPLIT = '\n' # used to line break socket streams
 TESTFILE = 'testfile.txt'
+active_master = False
+active_minion = False
+active_miner = False
+active_client = False
 
 
 # signal handler to maintain local chunk file system
@@ -55,9 +59,30 @@ def int_handler(signal, frame):
     sys.exit(0)
 
 def set_configuration():
+    global active_master
+    global active_minion
+    global active_miner
+    global active_client
     logging.basicConfig(filename=OUTPUTFNAME, filemode='a', format='%(name)s - %(levelname)s - %(message)s') # log errors to file
     conf = configparser.ConfigParser()
     conf.readfp(open(CONFIG_FILE))
+    
+    if (conf.get('master', 'active_master') == 'yes'):
+        print ("active master")
+        active_master = True
+        
+    if (conf.get('minion', 'active_minion') == 'yes'):
+        print ("active minion")
+        active_minion = True
+        
+    if (conf.get('miner', 'active_miner') == 'yes'):
+        print ("active miner")
+        active_miner = True
+    
+    if (conf.get('client', 'active_client') == 'yes'):
+        print ("active client")
+        active_client = True
+    
     miner_address = get_miner_address(conf)
     chunk_size = int(conf.get('master', 'chunk_size'))
     replication_factor = int(conf.get('master', 'replication_factor'))
@@ -489,8 +514,9 @@ class Client:
 
 
         except socket.error as er:
-            print("no contact with minion")
-            raise er
+            print("CLIENT: no contact with minion: " + minion_host)
+            print("CLIENT: save likely failed - nov 8th")
+            #raise er
 
 
     def send_to_master(self):
@@ -905,26 +931,48 @@ if __name__ == "__main__":
 
 
 
-
-        # -----START SERVICES--------------------------------------------------
-        chainserver = ChainServer(localhost, CHAIN_PORT)
-        signal.signal(signal.SIGINT, int_handler) # set up handler for chunk table image
-        storage_master = StorageNodeMaster(localhost, MASTER_PORT, all_minions, chunk_size, replication_factor)
-        storage_minion = StorageNodeMinion(localhost, MINION_PORT)
-
+        write_output("start tests...")
         time.sleep(1)
-        client = Client()
+        # -----START SERVICES--------------------------------------------------
+        if active_miner:
+            chainserver = ChainServer(localhost, CHAIN_PORT)
+            
+            # mining tests -------------------------
+            add_transaction(miner_address, 'c6efb084-e37d-11e8-bd44-001a92daf3f8') # test with known uuid url
+            # mine transactions into blocks
+            if local_transactions:
+                for x in range(0, 5):
+                    mine()
+            # end mining tests ---------------------
+        
+        if (active_master or active_minion): 
+            signal.signal(signal.SIGINT, int_handler) # set up handler for chunk table image
+        
+        if active_master:
+            storage_master = StorageNodeMaster(localhost, MASTER_PORT, all_minions, chunk_size, replication_factor)
+            
+        if active_minion:
+            storage_minion = StorageNodeMinion(localhost, MINION_PORT)
+        
+        if active_client:
+            client = Client()
+            client.put(TESTFILE)
+
+        
+        
 
         # ---------------------------------------------------------------------
 
 
 
 
-        write_output("start tests...")
-        time.sleep(1)
+        
 
-
-        client.put(TESTFILE)
+    
+            
+            
+            
+            
         #time.sleep(1)
         #client.put(TESTFILE)
         # Test Create 10 Blocks in a row - obsolete Oct 3rd
@@ -937,7 +985,7 @@ if __name__ == "__main__":
     #    get_blocks()
 
 
-        #add_transaction(miner_address, 'c6efb084-e37d-11e8-bd44-001a92daf3f8') # test with known uuid url
+        
 
         # test Create Transactions in a row
         for x in range(0, 0): # vary second variable to test
@@ -945,10 +993,7 @@ if __name__ == "__main__":
             add_transaction(miner_address, u.hex) # attach the user dat
 
 
-        # mine transactions into blocks
-        if local_transactions:
-            for x in range(0, 5):
-                mine()
+        
         #get_blocks()
 
     except BaseException as e:
