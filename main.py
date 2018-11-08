@@ -242,6 +242,10 @@ class StorageNodeMaster():
         chunks = self.allocate_chunks(dest, num_chunks)
         chunks = pickle.dumps(chunks)
         client.send(chunks)
+        request = client.rec(2048)
+        if (request = 'get minions'):
+            client.send(self.minions)
+        
 
 
     def get_file_table_entry(self, fname):
@@ -439,7 +443,8 @@ class Client:
 
                     #minions = [master.get_minions()[_] for _ in c[1]] #wth
                     print(type(minions)) # 
-                    
+                    s.send('get minions')
+                    minions = s.rec(2048)
                     self.send_to_minion(chunk_uuid, data, minions) 
 
 
