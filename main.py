@@ -244,7 +244,8 @@ class StorageNodeMaster():
         client.send(chunks)
         request = client.recv(2048)
         if (request == 'get minions'):
-            client.send(self.minions)
+            reply = (self.minions).encode('utf-8')
+            client.send(reply)
         
 
 
@@ -443,8 +444,8 @@ class Client:
 
                     #minions = [master.get_minions()[_] for _ in c[1]] #wth
                     
-                    s.send('get minions')
-                    minions = s.rec(2048)
+                    s.send(('get minions').encode('utf-8'))
+                    minions = s.recv(2048).decode()
                     print(type(minions)) # 
                     self.send_to_minion(chunk_uuid, data, minions) 
 
