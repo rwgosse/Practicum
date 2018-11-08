@@ -304,7 +304,7 @@ class StorageNodeMinion():
             # determine nature of request
             #lines = incomming.split(SPLIT)
             if incomming[0].startswith("P"): # put request
-                print("MINION: incomming put request" + str(client))
+                write_output("MINION: incomming put request" + str(client))
                 chunk_uuid = incomming[1]
                 minions = incomming[2]
                 chunksize = int(incomming[3])
@@ -314,7 +314,7 @@ class StorageNodeMinion():
                     with open(chunkpath, 'wb') as chunk_to_write: # open the local file
                         chunk_to_write.write(data)
                         chunk_to_write.close()
-                        print ("MINION: Received Chunk")
+                        write_output("MINION: Received Chunk")
                 
                        
                             
