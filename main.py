@@ -313,6 +313,7 @@ class StorageNodeMinion():
                 while rec:
                     stream = client.recv(1024)
                     data += stream
+                    print(len(data))
                     if (chunksize == len(data)):
                         rec = False
                 
