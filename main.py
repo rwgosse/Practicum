@@ -31,8 +31,8 @@ import configparser
 
 # Project Meta Variables
 __author__ = "Richard W Gosse - A00246425" # name, student number
-__date__ = "$26-Oct-2018 2:09:00 PM$" # updated with each version change
-VERSION = "0.2" # aibitrary version number, updated manually during development, does not relate to any commits
+__date__ = "$26-Nov-2018 9:51:00 AM$" # updated with each version change
+VERSION = "0.3" # aibitrary version number, updated manually during development, does not relate to any commits
 OUTPUTFNAME = "./logfile.txt" # output log file
 #MINER_ADDRESS = "q83jv93yfnf02f8n_first_miner_nf939nf03n88fnf92n" # made unique and loads from user.cfg
 BLOCKCHAIN_DATA_DIR = 'chaindata' # folder for json formatted blocks
@@ -70,7 +70,7 @@ def set_configuration():
 
 
     foreign_nodes = sync_node_list(conf) # store urls of other nodes in a list
-    blockchain = sync_local_chain() # create a list of the local blockchain
+    blockchain = sync_local_chain(foreign_nodes) # create a list of the local blockchain
     blockchain = consensus(blockchain, foreign_nodes) # ensure that our blockchain is the longest
 
 
@@ -433,7 +433,7 @@ class Client:
         #s.close()
 
         except socket.error as er:
-            print("failed to connect with master")
+            write_output("CLIENT: failed to connect with master")
             #raise er
             
         # problem develops if there are not enough minions to carry the whole file - nov 7th    
@@ -450,7 +450,7 @@ class Client:
                     s.send(('get minions').encode('utf-8'))
                     minions = s.recv(4096)
                     minions = pickle.loads(minions)
-                    print(type(minions)) # 
+                    #print(type(minions)) # 
                     self.send_to_minion(chunk_uuid, data, minions) 
 
 
@@ -469,7 +469,7 @@ class Client:
             timeout = 5
             minion_socket.settimeout(timeout)
             minion_socket.connect((minion_host, int(minion_port)))
-            print("CLIENT: Sending to minion: " + minion_host)
+            write_output("CLIENT: Sending to minion: " + minion_host)
             # put the chunk_uuid, data and minions tgether and send
             
             
@@ -610,7 +610,7 @@ def proof_of_work2(last_proof): # tdjsnelling,
         n = n + 1
 
         # slows performance drastically
-        # print (curr_hash)
+        #print (curr_hash)
 
         if curr_hash.startswith('000000'):
             #print (curr_hash)
@@ -630,6 +630,7 @@ def is_ip(addr):
 def mine():
     # gather the data required to mine the block
     if local_transactions: # check if list is empty, very pythonic
+        print('mining...')
         #print("# of local transactions:" + str(len(local_transactions)))
         current_transaction = local_transactions.pop(0) # first in, first out
         new_block_user_data = current_transaction.user_data
@@ -704,7 +705,7 @@ def get_master_address(conf):
     write_output("MASTER ADDRESS:" + master_address) # and advertise known nodes
     return master_address, int(master_host)
 
-def sync_local_chain():
+def sync_local_chain(foreign_nodes):
 
     write_output("Syncronizing Blockchain...")
     syncing_blocks = []
@@ -712,7 +713,7 @@ def sync_local_chain():
         os.mkdir(BLOCKCHAIN_DATA_DIR)
     if os.listdir(BLOCKCHAIN_DATA_DIR) == []: # is the folder empty, ie no local genesis block?
         # try to find a remote chain to adopt before creating a new chain
-        syncing_blocks = consensus(syncing_blocks)
+        syncing_blocks = consensus(syncing_blocks, foreign_nodes)
         if os.listdir(BLOCKCHAIN_DATA_DIR) == []: # is it still empty?
             first_block = create_genesis_block() # add a genesis block to the local chain
             save_block(first_block) # save the genesis block locally
@@ -933,6 +934,9 @@ if __name__ == "__main__":
     #        new_block = Block(new_block_index,VERSION,date.datetime.now(),last_block_hash,MINER_ADDRESS, "1")
     #        blockchain.append(new_block) # add test block to the local chain
     #    get_blocks()
+    
+    
+        add_transaction(miner_address, 'c6efb084-e37d-11e8-bd44-001a92daf3f8') # test with known uuid url
 
         # test Create Transactions in a row
         for x in range(0, 0): # vary second variable to test
