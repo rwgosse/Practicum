@@ -499,7 +499,7 @@ class Client:
             print("failed to connect with master")
             #raise er
             
-            
+        # problem develops if there are not enough minions to carry the whole file - nov 7th    
         if (chunks):
             with open(source, "rb") as f:
                 for c in chunks:  # c[0] contains the uuid, c[1] contains the minion
@@ -531,7 +531,7 @@ class Client:
             
             
             # START META DATA
-            msg = "P" + SPLIT + str(chunk_uuid) + SPLIT + str(minions) + SPLIT + str(sys.getsizeof(data))
+            msg = "P" + SPLIT + str(chunk_uuid) + SPLIT + str(minions) + SPLIT + str(len(data)) #str(sys.getsizeof(data)) # get sizeof adds 33 extra :(
             
             
             msg = msg.encode('utf-8') # string to bytewise
