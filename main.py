@@ -841,6 +841,7 @@ def findchains(foreign_nodes):
 
             except socket.timeout as ex:
                 write_output("NA:" + str(peer_address) + " : " + str(peer_port))
+                #raise ex
 
             except socket.error as ex:
                 write_output("ERR:" + str(peer_address) + " : " + str(peer_port))
@@ -906,7 +907,7 @@ if __name__ == "__main__":
 
 
         # -----START SERVICES--------------------------------------------------
-        #chainserver = ChainServer(localhost, CHAIN_PORT)
+        chainserver = ChainServer(localhost, CHAIN_PORT)
         signal.signal(signal.SIGINT, int_handler) # set up handler for chunk table image
         storage_master = StorageNodeMaster(localhost, MASTER_PORT, all_minions, chunk_size, replication_factor)
         storage_minion = StorageNodeMinion(localhost, MINION_PORT)
