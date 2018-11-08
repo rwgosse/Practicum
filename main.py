@@ -245,7 +245,7 @@ class StorageNodeMaster():
         
         request = client.recv(2048).decode()
         if (request == 'get minions'):
-            print(request
+            print(request)
             reply = (self.minions).encode('utf-8')
             client.send(reply)
         
