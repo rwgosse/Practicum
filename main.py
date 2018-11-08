@@ -302,24 +302,25 @@ class StorageNodeMinion():
             incomming = incomming.split(SPLIT)
             
             # determine nature of request
-            #lines = incomming.split(SPLIT)
+            
             if incomming[0].startswith("P"): # put request
                 write_output("MINION: incomming put request" + str(client))
+                
+                # RECEIVE META 
                 chunk_uuid = incomming[1]
                 minions = incomming[2]
                 chunksize = int(incomming[3])
-                print(chunksize)
+                
+                # RECEIVE THE CHUNK
                 rec = True
                 data = b''
                 while rec:
                     stream = client.recv(1024)
                     data += stream
-                    #print(len(data))
                     if (chunksize == len(data)):
-                        rec = False
+                        rec = False                       
                 
-                
-                # write the chunk to storage
+                # WRITE THE CHUNK TO STORAGE
                 chunkpath = '%s/%s' % (DATA_DIR, chunk_uuid)
                 if os.path.exists(DATA_DIR):
                     with open(chunkpath, 'wb') as chunk_to_write: # open the local file
@@ -329,58 +330,22 @@ class StorageNodeMinion():
                 if len(minions) > 0: # are there additional minions to carry the chunk?
                     self.forward(chunk_uuid, data, minions) # then forward the chunk!
                 client.close()
+                break
                 
-                
-
-
-
-
+  
 
             if incomming[0].startswith("G"): #get request:
                 print("MINION: incomming get request" + str(client))
                 fname = incomming[1]
                 #threading.Thread(target=self.master_read, args=(client, address, fname)).start() # pass connection to a new thread
 
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-#        while True:
-#            size = client.recv(16) # limit length to 255 bytes
-#            if not size:
-#                break
-#            size = int(size, 2)
-#            filename = client.recv(size)
-#            filesize = client.recv(32)
-#            filesize = int(filesize, 2)
-#            file_to_write = open(filename, 'wb')
-#            chunksize = 4096
-#            while filesize > 0:
-#                if filesize < chunksize:
-#                    chunksize = filesize
-#                data = client.recv(chunksize)
-#                file_to_write.write(data)
-#                filesize -= len(data)
-#            file_to_write.close()
 
     def listen(self):
         # we will receive either a read command or a write command
         
         if not os.path.exists(DATA_DIR): # is there no local chunk folder?
             os.mkdir(DATA_DIR)
-            
-        
-    
-        
-        
-        
+
         print ("Acting as storage minion on port " + str(self.port))
         print (self.sock)
         self.sock.listen(5) # on self.sock
@@ -388,39 +353,6 @@ class StorageNodeMinion():
             client, address = self.sock.accept() # accept incomming connection
             threading.Thread(target=self.incoming, args=(client, address)).start()
         sock.close()
-            
-            
-            
-            
-            
-
-#            incomming = (client.recv(4096).decode())
-#            
-#    
-#            
-#            #print(incomming)
-#            if not incomming:
-#                break
-#
-#            incomming = incomming.split(SPLIT)
-#
-#            # determine nature of request
-#  
-#            if incomming[0].startswith("P"): # put request
-#                print("incomming put request" + str(client))
-#                chunk_uuid = incomming[1]
-#                minions = incomming[2]
-#                data = client.recv(4096)
-#
-#                
-#                threading.Thread(target=self.minion_put, args=(client, chunk_uuid, data, minions)).start() # pass connection to a new thread
-#
-#            if incomming[0].startswith("G"): #get request:
-#                print("incomming get request" + str(client))
-#                chunk_uuid = incomming[1]
-#                threading.Thread(target=self.minion_get, args=(client, chunk_uuid)).start() # pass connection to a new thread
-
-
 
     def minion_put(self, chunk_uuid, data, minions):
         with open(DATA_DIR + str(chunk_uuid), 'wb') as f: # open the local file
@@ -462,8 +394,7 @@ class Client:
 
         global master_address
         global master_port
-        #master_address = '192.168.0.13' # oh gawd! no magic variables, get rid of this ASAP!
-        #master_port = MASTER_PORT
+
         dest = 'test' # junk data string
 
 
@@ -471,8 +402,7 @@ class Client:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             s.settimeout(timeout)
-            #print(master_address)
-            #print(master_port)
+
             s.connect((master_address, master_port))
             time.sleep(0.1)
             msg = "P" + SPLIT + str(dest) + SPLIT + str(size) # squish the destination and file size together
@@ -483,12 +413,11 @@ class Client:
 
 
             while True:
-                incomming = s.recv(4096) # determine a decent byte size.
+                incomming = s.recv(4096) #  a decent byte size.
 
                 if not incomming:
                     break
                 # separate incomming stream to get chunk uuid and minion meta data
-                # block_size = incoming
                 chunks = pickle.loads(incomming)
                 #print(type(chunks))
                 break
@@ -502,17 +431,21 @@ class Client:
         # problem develops if there are not enough minions to carry the whole file - nov 7th    
         if (chunks):
             with open(source, "rb") as f:
+                print(len(chunks))
                 for c in chunks:  # c[0] contains the uuid, c[1] contains the minion
                     data = f.read(chunk_size)
                     chunk_uuid = c[0]
 
+
                     #minions = [master.get_minions()[_] for _ in c[1]] #wth
-                    #print(type(minions))
-                    self.send_to_minion(chunk_uuid, data, minions)
+                    print(type(minions)) # 
+                    
+                    self.send_to_minion(chunk_uuid, data, minions) 
 
 
     def send_to_minion(self, chunk_uuid, data, minions):
-        print(type(data)) # should return 'bytes'
+
+        #print(type(data)) # should return 'bytes' yup :::)
         minion = list(minions.keys())[0]
         minion = minions[minion]
         minions = list(minions.keys())[1:]
@@ -952,7 +885,7 @@ if __name__ == "__main__":
         global master_port
 
 
-        blockchain, miner_address, master_address, master_port, minions, chunk_size, replication_factor = set_configuration()
+        blockchain, miner_address, master_address, master_port, all_minions, chunk_size, replication_factor = set_configuration()
         print ("Hello World")
         print ("(p)ut  (g)et  (m)ine  e(x)it")
         #1/0 #test exception log
@@ -963,7 +896,7 @@ if __name__ == "__main__":
         # -----START SERVICES--------------------------------------------------
         #chainserver = ChainServer(localhost, CHAIN_PORT)
         signal.signal(signal.SIGINT, int_handler) # set up handler for chunk table image
-        storage_master = StorageNodeMaster(localhost, MASTER_PORT, minions, chunk_size, replication_factor)
+        storage_master = StorageNodeMaster(localhost, MASTER_PORT, all_minions, chunk_size, replication_factor)
         storage_minion = StorageNodeMinion(localhost, MINION_PORT)
         
         time.sleep(1)
