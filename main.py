@@ -243,7 +243,7 @@ class StorageNodeMaster():
         chunks = pickle.dumps(chunks)
         client.send(chunks)
         request = client.rec(2048)
-        if (request = 'get minions'):
+        if (request == 'get minions'):
             client.send(self.minions)
         
 
