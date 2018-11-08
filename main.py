@@ -295,7 +295,7 @@ class StorageNodeMinion():
 
         incomming = ''
         while True:
-            incomming = (client.recv(1024).decode())
+            incomming = (client.recv(2048).decode())
             if not incomming:
                 break
             #print("MINION:incomming")
@@ -308,7 +308,16 @@ class StorageNodeMinion():
                 chunk_uuid = incomming[1]
                 minions = incomming[2]
                 chunksize = int(incomming[3])
-                data = client.recv(chunksize)
+                rec = True
+                data = b''
+                while rec:
+                    stream = client.recv(1024)
+                    data += stream
+                    if (chunksize == len(data)):
+                        rec = False
+                
+                
+                # write the chunk to storage
                 chunkpath = '%s/%s' % (DATA_DIR, chunk_uuid)
                 if os.path.exists(DATA_DIR):
                     with open(chunkpath, 'wb') as chunk_to_write: # open the local file
@@ -318,7 +327,7 @@ class StorageNodeMinion():
                 if len(minions) > 0: # are there additional minions to carry the chunk?
                     self.forward(chunk_uuid, data, minions) # then forward the chunk!
                 client.close()
-                break
+                
                 
 
 
@@ -535,6 +544,7 @@ class Client:
             
         except socket.error as er:
             print("no contact with minion")
+            raise er
 
 
     def send_to_master(self):
