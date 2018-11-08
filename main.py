@@ -308,12 +308,13 @@ class StorageNodeMinion():
                 chunk_uuid = incomming[1]
                 minions = incomming[2]
                 chunksize = int(incomming[3])
+                print(chunksize)
                 rec = True
                 data = b''
                 while rec:
                     stream = client.recv(1024)
                     data += stream
-                    print(len(data))
+                    #print(len(data))
                     if (chunksize == len(data)):
                         rec = False
                 
