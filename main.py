@@ -182,7 +182,7 @@ class StorageNodeMaster():
 
         if os.path.isfile(FS_IMAGE):
             self.file_table, chunk_mapping = pickle.load(open(FS_IMAGE, 'rb'))
-            
+
         #if os.path.isfile(FS_IMAGE):
         #storage_master.file_table, storage_master.chunk_mapping = pickle.load(open(FS_IMAGE, 'rb'))
 
@@ -242,14 +242,14 @@ class StorageNodeMaster():
         chunks = self.allocate_chunks(dest, num_chunks)
         chunks = pickle.dumps(chunks)
         client.send(chunks)
-        
+
         request = client.recv(2048).decode()
         if (request == 'get minions'):
             print(request)
             reply = (self.minions)#.encode('utf-8')
             reply = pickle.dumps(reply)
             client.send(reply)
-        
+
 
 
     def get_file_table_entry(self, fname):
@@ -275,7 +275,7 @@ class StorageNodeMaster():
         for i in range(0, num):
             chunk_uuid = uuid.uuid1()
             #print(self.minions.keys())
-            
+
             nodes_ids = random.sample(self.minions.keys(), self.replication_factor) # do ensure more minions than replication factor
             chunks.append((chunk_uuid, nodes_ids))
             self.file_table[dest].append((chunk_uuid, nodes_ids))
@@ -293,7 +293,7 @@ class StorageNodeMinion():
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # avoid common errors
         self.sock.bind((self.host, self.port)) # bind the socket
         chunks = {}
-        
+
         thread = threading.Thread(target=self.listen, args=())
         thread.daemon = False                            # Daemonize thread
         thread.start()                                  # Start the execution
@@ -308,17 +308,17 @@ class StorageNodeMinion():
                 break
             #print("MINION:incomming")
             incomming = incomming.split(SPLIT)
-            
+
             # determine nature of request
-            
+
             if incomming[0].startswith("P"): # put request
                 write_output("MINION: incomming put request" + str(client))
-                
-                # RECEIVE META 
+
+                # RECEIVE META
                 chunk_uuid = incomming[1]
                 minions = incomming[2]
                 chunksize = int(incomming[3])
-                
+
                 # RECEIVE THE CHUNK
                 rec = True
                 data = b''
@@ -326,8 +326,8 @@ class StorageNodeMinion():
                     stream = client.recv(1024)
                     data += stream
                     if (chunksize == len(data)):
-                        rec = False                       
-                
+                        rec = False
+
                 # WRITE THE CHUNK TO STORAGE
                 chunkpath = '%s/%s' % (DATA_DIR, chunk_uuid)
                 if os.path.exists(DATA_DIR):
@@ -339,8 +339,8 @@ class StorageNodeMinion():
                     self.forward(chunk_uuid, data, minions) # then forward the chunk!
                 client.close()
                 break
-                
-  
+
+
 
             if incomming[0].startswith("G"): #get request:
                 print("MINION: incomming get request" + str(client))
@@ -350,7 +350,7 @@ class StorageNodeMinion():
 
     def listen(self):
         # we will receive either a read command or a write command
-        
+
         if not os.path.exists(DATA_DIR): # is there no local chunk folder?
             os.mkdir(DATA_DIR)
 
@@ -435,8 +435,8 @@ class Client:
         except socket.error as er:
             write_output("CLIENT: failed to connect with master")
             #raise er
-            
-        # problem develops if there are not enough minions to carry the whole file - nov 7th    
+
+        # problem develops if there are not enough minions to carry the whole file - nov 7th
         if (chunks):
             with open(source, "rb") as f:
                 print(len(chunks))
@@ -446,12 +446,12 @@ class Client:
 
 
                     #minions = [master.get_minions()[_] for _ in c[1]] #wth
-                    
+
                     s.send(('get minions').encode('utf-8'))
                     minions = s.recv(4096)
                     minions = pickle.loads(minions)
-                    #print(type(minions)) # 
-                    self.send_to_minion(chunk_uuid, data, minions) 
+                    #print(type(minions)) #
+                    self.send_to_minion(chunk_uuid, data, minions)
 
 
     def send_to_minion(self, chunk_uuid, data, minions):
@@ -471,23 +471,23 @@ class Client:
             minion_socket.connect((minion_host, int(minion_port)))
             write_output("CLIENT: Sending to minion: " + minion_host)
             # put the chunk_uuid, data and minions tgether and send
-            
-            
-            
+
+
+
             # START META DATA
             msg = "P" + SPLIT + str(chunk_uuid) + SPLIT + str(minions) + SPLIT + str(len(data)) #str(sys.getsizeof(data)) # get sizeof adds 33 extra :(
-            
-            
+
+
             msg = msg.encode('utf-8') # string to bytewise
             minion_socket.send(msg)
-            
+
             time.sleep(0.1)
 
-            
+
             # START ACTUAL CHUNK DATA
             minion_socket.sendall(data)
-            
-            
+
+
         except socket.error as er:
             print("no contact with minion")
             raise er
@@ -910,7 +910,7 @@ if __name__ == "__main__":
         signal.signal(signal.SIGINT, int_handler) # set up handler for chunk table image
         storage_master = StorageNodeMaster(localhost, MASTER_PORT, all_minions, chunk_size, replication_factor)
         storage_minion = StorageNodeMinion(localhost, MINION_PORT)
-        
+
         time.sleep(1)
         client = Client()
 
@@ -934,9 +934,9 @@ if __name__ == "__main__":
     #        new_block = Block(new_block_index,VERSION,date.datetime.now(),last_block_hash,MINER_ADDRESS, "1")
     #        blockchain.append(new_block) # add test block to the local chain
     #    get_blocks()
-    
-    
-        add_transaction(miner_address, 'c6efb084-e37d-11e8-bd44-001a92daf3f8') # test with known uuid url
+
+
+        #add_transaction(miner_address, 'c6efb084-e37d-11e8-bd44-001a92daf3f8') # test with known uuid url
 
         # test Create Transactions in a row
         for x in range(0, 0): # vary second variable to test
