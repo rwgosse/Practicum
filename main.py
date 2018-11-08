@@ -247,7 +247,7 @@ class StorageNodeMaster():
         if (request == 'get minions'):
             print(request)
             reply = (self.minions)#.encode('utf-8')
-            reply = pickle.dump(reply)
+            reply = pickle.dumps(reply)
             client.send(reply)
         
 
@@ -448,8 +448,8 @@ class Client:
                     #minions = [master.get_minions()[_] for _ in c[1]] #wth
                     
                     s.send(('get minions').encode('utf-8'))
-                    minions = s.recv(2048)
-                    minions = pickle.load(minions)
+                    minions = s.recv(4096)
+                    minions = pickle.loads(minions)
                     print(type(minions)) # 
                     self.send_to_minion(chunk_uuid, data, minions) 
 
