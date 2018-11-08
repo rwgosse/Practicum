@@ -242,8 +242,10 @@ class StorageNodeMaster():
         chunks = self.allocate_chunks(dest, num_chunks)
         chunks = pickle.dumps(chunks)
         client.send(chunks)
-        request = client.recv(2048)
+        
+        request = client.recv(2048).decode()
         if (request == 'get minions'):
+            print(request
             reply = (self.minions).encode('utf-8')
             client.send(reply)
         
