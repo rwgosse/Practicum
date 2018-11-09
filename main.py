@@ -208,9 +208,6 @@ class StorageNodeMaster():
         if os.path.isfile(FS_IMAGE):
             self.file_table, chunk_mapping = pickle.load(open(FS_IMAGE, 'rb'))
 
-        #if os.path.isfile(FS_IMAGE):
-        #storage_master.file_table, storage_master.chunk_mapping = pickle.load(open(FS_IMAGE, 'rb'))
-
         self.minions = minions
 
         thread = threading.Thread(target=self.listen, args=())
@@ -451,8 +448,8 @@ class Client:
                 if not incomming:
                     break
                 # separate incomming stream to get chunk uuid and minion meta data
-                chunks = pickle.loads(incomming)
-                #print(type(chunks))
+                chunks = pickle.loads(incomming) # Error may occur if master is windows (EOF related) or has differing python version
+
                 break
 
         #s.close()
@@ -936,23 +933,19 @@ if __name__ == "__main__":
         # -----START SERVICES--------------------------------------------------
         if active_miner:
             chainserver = ChainServer(localhost, CHAIN_PORT)
-            
-            # mining tests -------------------------
-            add_transaction(miner_address, 'c6efb084-e37d-11e8-bd44-001a92daf3f8') # test with known uuid url
-            # mine transactions into blocks
-            if local_transactions:
-                for x in range(0, 5):
-                    mine()
-            # end mining tests ---------------------
+                        
         
-        if (active_master or active_minion): 
-            signal.signal(signal.SIGINT, int_handler) # set up handler for chunk table image
+        
         
         if active_master:
             storage_master = StorageNodeMaster(localhost, MASTER_PORT, all_minions, chunk_size, replication_factor)
             
         if active_minion:
             storage_minion = StorageNodeMinion(localhost, MINION_PORT)
+        
+        if (active_master or active_minion): 
+            signal.signal(signal.SIGINT, int_handler) # set up handler for chunk table image
+        
         
         if active_client:
             client = Client()
@@ -962,8 +955,14 @@ if __name__ == "__main__":
         
 
         # ---------------------------------------------------------------------
-
-
+        if active_miner:
+            # mining tests -------------------------
+            add_transaction(miner_address, 'c6efb084-e37d-11e8-bd44-001a92daf3f8') # test with known uuid url
+            # mine transactions into blocks
+            if local_transactions:
+                for x in range(0, 5):
+                    mine()
+            # end mining tests ---------------------
 
 
         
