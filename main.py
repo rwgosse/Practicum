@@ -395,11 +395,17 @@ class StorageNodeMinion():
 
     def forward(self, chunk_uuid, data, minions):
         
-        print(type(minions)) 
-        print(minions)
-        minion = list(minions.keys())[0]
-        minion = minions[minion]
-        minions = list(minions.keys())[1:]
+
+        index = random.randint(0,len(minions)-1)
+        minion = minions(index)
+        minions.remove(minion)
+        
+        
+        
+        #minion = list(minions)[0] # take out keys as there is no such element
+        #minion = minions[minion]
+        #minions = list(minions.keys())[1:]
+        
         #print(minion)
         #print(str(minions))
         minion_host, minion_port = minion
@@ -418,13 +424,13 @@ class StorageNodeMinion():
 
 
             msg = msg.encode('utf-8') # string to bytewise
-            forwarding.send(msg)
+            forwarding_socket.send(msg)
 
             time.sleep(0.1)
 
 
             # START ACTUAL CHUNK DATA
-            forwarding.sendall(data)
+            forwarding_socket.sendall(data)
 
 
         except socket.error as er:
