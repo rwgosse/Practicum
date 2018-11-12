@@ -395,7 +395,8 @@ class StorageNodeMinion():
 
     def forward(self, chunk_uuid, data, minions):
         
-        #print(type(data)) # should return 'bytes' yup :::)
+        print(type(minions)) 
+        print(minions)
         minion = list(minions.keys())[0]
         minion = minions[minion]
         minions = list(minions.keys())[1:]
@@ -410,7 +411,6 @@ class StorageNodeMinion():
             minion_socket.connect((minion_host, int(minion_port)))
             write_output("MINION: Forwarding to minion: " + minion_host)
             # put the chunk_uuid, data and minions tgether and send
-
 
 
             # START META DATA
