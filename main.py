@@ -399,7 +399,7 @@ class StorageNodeMinion():
         
 
         index = random.randint(0,len(minions)-1)
-        minion = minions(index)
+        minion = minions[index]
         minions.remove(minion)
         
         
