@@ -404,11 +404,11 @@ class StorageNodeMinion():
         #print(str(minions))
         minion_host, minion_port = minion
         # Create a socket connection.
-        minion_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        forwarding_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             timeout = 5
-            minion_socket.settimeout(timeout)
-            minion_socket.connect((minion_host, int(minion_port)))
+            forwarding_socket.settimeout(timeout)
+            forwarding_socket.connect((minion_host, int(minion_port)))
             write_output("MINION: Forwarding to minion: " + minion_host)
             # put the chunk_uuid, data and minions tgether and send
 
@@ -418,13 +418,13 @@ class StorageNodeMinion():
 
 
             msg = msg.encode('utf-8') # string to bytewise
-            minion_socket.send(msg)
+            forwarding.send(msg)
 
             time.sleep(0.1)
 
 
             # START ACTUAL CHUNK DATA
-            minion_socket.sendall(data)
+            forwarding.sendall(data)
 
 
         except socket.error as er:
