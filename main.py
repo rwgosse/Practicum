@@ -398,8 +398,7 @@ class StorageNodeMinion():
     def forward(self, chunk_uuid, data, minions):
         
 
-        index = random.randint(0,len(minions)-1)
-        minion = minions[index]
+        minion = random.choice(minions)
         minions.remove(minion)
         
         
