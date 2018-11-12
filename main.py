@@ -339,6 +339,8 @@ class StorageNodeMinion():
                 # RECEIVE META
                 chunk_uuid = incomming[1]
                 minions = incomming[2]
+                print(type(minions))
+                print(minions)
                 chunksize = int(incomming[3])
 
                 # RECEIVE THE CHUNK
