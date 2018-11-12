@@ -296,12 +296,12 @@ class StorageNodeMaster():
         chunks = []
         for i in range(0, num):
             chunk_uuid = uuid.uuid1()
-            #print(self.minions.keys())
+            print("MASTER: minion keys = " + str(self.minions.keys()))
 
             nodes_ids = random.sample(self.minions.keys(), self.replication_factor) # do ensure more minions than replication factor
             chunks.append((chunk_uuid, nodes_ids))
             self.file_table[dest].append((chunk_uuid, nodes_ids))
-            return chunks
+        return chunks # i noticed this was shifted right an extra tab, correction nov 9th
 
 
 
@@ -394,8 +394,47 @@ class StorageNodeMinion():
         pass
 
     def forward(self, chunk_uuid, data, minions):
-        print("MINION: forwarding not implemented yet")
-        pass
+        
+        #print(type(data)) # should return 'bytes' yup :::)
+        minion = list(minions.keys())[0]
+        minion = minions[minion]
+        minions = list(minions.keys())[1:]
+        #print(minion)
+        #print(str(minions))
+        minion_host, minion_port = minion
+        # Create a socket connection.
+        minion_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            timeout = 5
+            minion_socket.settimeout(timeout)
+            minion_socket.connect((minion_host, int(minion_port)))
+            write_output("MINION: Forwarding to minion: " + minion_host)
+            # put the chunk_uuid, data and minions tgether and send
+
+
+
+            # START META DATA
+            msg = "P" + SPLIT + str(chunk_uuid) + SPLIT + str(minions) + SPLIT + str(len(data)) #str(sys.getsizeof(data)) # get sizeof adds 33 extra :(
+
+
+            msg = msg.encode('utf-8') # string to bytewise
+            minion_socket.send(msg)
+
+            time.sleep(0.1)
+
+
+            # START ACTUAL CHUNK DATA
+            minion_socket.sendall(data)
+
+
+        except socket.error as er:
+            print("MINION: no contact with minion: " + minion_host)
+            #print("MINION: save likely failed - nov 8th")
+            #raise er
+        
+ 
+        
+    
 
     def delete_block(self, uuid):
         pass
@@ -931,12 +970,10 @@ if __name__ == "__main__":
         write_output("start tests...")
         time.sleep(1)
         # -----START SERVICES--------------------------------------------------
-        if active_miner:
-            chainserver = ChainServer(localhost, CHAIN_PORT)
+        
+        chainserver = ChainServer(localhost, CHAIN_PORT)
                         
-        
-        
-        
+
         if active_master:
             storage_master = StorageNodeMaster(localhost, MASTER_PORT, all_minions, chunk_size, replication_factor)
             
