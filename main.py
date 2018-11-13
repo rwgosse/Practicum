@@ -270,7 +270,7 @@ class StorageNodeMaster():
             #print(request)
             reply = (self.minions)#.encode('utf-8')
             reply = pickle.dumps(reply)
-            client.send(reply)
+            client.sendall(reply)
 
 
 
@@ -401,20 +401,14 @@ class StorageNodeMinion():
 
     def forward(self, chunk_uuid, data, minions):
         
-
-        
-        minion = random.randrange(len(minions))
+        minion = list(minions.keys())[0]
         minion = minions[minion]
-        minions.remove(minion)
+        minions = list(minions.keys())[1:]
         
-        #minion = list(minions.keys())[0]
+        #minion = random.randrange(len(minions))
         #minion = minions[minion]
-        #minions = list(minions.keys())[1:]
-        
-        #minion = list(minions)[0] # take out keys as there is no such element
-        #minion = minions[minion]
-        #minions = list(minions.keys())[1:]
-        
+        #minions.remove(minion)
+
         print("FORWARDING TO:" + str(minion))
         #print(str(minions))
         minion_host, minion_port = minion
@@ -528,7 +522,7 @@ class Client:
                     
         except socket.error as er:
             write_output("CLIENT: failed to connect with master")
-            #raise er    
+            raise er    
 
 
     def send_to_minion(self, chunk_uuid, data, minions):
