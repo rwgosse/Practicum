@@ -335,11 +335,12 @@ class StorageNodeMinion():
             # determine nature of request
 
             if incomming[0].startswith("P"): # put request
-                write_output("MINION: incomming put request" + str(client))
+                write_output("MINION: incomming put request from : " + str(address))
 
                 # RECEIVE META
                 chunk_uuid = incomming[1]
                 minions = incomming[2]
+                minions = pickle.loads(minions)
                 print(type(minions))
                 print(minions)
                 chunksize = int(incomming[3])
@@ -543,7 +544,7 @@ class Client:
 
 
             # START META DATA
-            msg = "P" + SPLIT + str(chunk_uuid) + SPLIT + str(minions) + SPLIT + str(len(data)) #str(sys.getsizeof(data)) # get sizeof adds 33 extra :(
+            msg = "P" + SPLIT + str(chunk_uuid) + SPLIT + pickle.dumps(minions) + SPLIT + str(len(data)) #str(sys.getsizeof(data)) # get sizeof adds 33 extra :(
 
 
             msg = msg.encode('utf-8') # string to bytewise
