@@ -403,9 +403,12 @@ class StorageNodeMinion():
         
 
         minion = random.choice(minions)
+        minion = minions[minion]
         minions.remove(minion)
         
-        
+        #minion = list(minions.keys())[0]
+        #minion = minions[minion]
+        #minions = list(minions.keys())[1:]
         
         #minion = list(minions)[0] # take out keys as there is no such element
         #minion = minions[minion]
@@ -481,51 +484,50 @@ class Client:
         dest = 'test' # junk data string
 
 
-        # Create a socket connection.
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        
         try:
-            s.settimeout(timeout)
+            # Create a socket connection.
+            socket_to_master = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            socket_to_master.settimeout(timeout)
 
-            s.connect((master_address, master_port))
+            socket_to_master.connect((master_address, master_port))
             time.sleep(0.1)
             msg = "P" + SPLIT + str(dest) + SPLIT + str(size) # squish the destination and file size together
 
             msg = msg.encode('utf-8') # string to bytewise
-            s.send(msg)
+            socket_to_master.send(msg)
             # chunks = master.write(dest, size)
 
 
             
-            incomming = s.recv(4096) #  a decent byte size?.
+            incomming = socket_to_master.recv(4096) #  a decent byte size?.
 
             # separate incomming stream to get chunk uuid and minion meta data
             chunks = pickle.loads(incomming) # Error may occur if master is windows (EOF related) or has differing python version
             print("CLIENT: CHUNKS TYPE:" + str(type(chunks)))
                 
+            # problem develops if there are not enough minions to carry the whole file - nov 7th
+            if (chunks):
+             with open(source, "rb") as f:
+                    print("CLIENT: # of chunks:" + str(len(chunks)))
+                    for c in chunks:  # c[0] contains the uuid, c[1] contains the minion?
+                    
+                        data = f.read(chunk_size)
+                        chunk_uuid = c[0]
+                        print("CLIENT: CHUNK: " + str(c[1]))
 
-        #s.close()
+                        #minions = [master.get_minions()[_] for _ in c[1]] #wth
 
+                        socket_to_master.send(('get minions').encode('utf-8'))
+                        minions = socket_to_master.recv(4096)
+                        minions = pickle.loads(minions)
+                        #print(type(minions)) #
+                        self.send_to_minion(chunk_uuid, data, minions)
+                    
+                    
         except socket.error as er:
             write_output("CLIENT: failed to connect with master")
-            #raise er
-
-        # problem develops if there are not enough minions to carry the whole file - nov 7th
-        if (chunks):
-            with open(source, "rb") as f:
-                print("CLIENT: # of chunks:" + str(len(chunks)))
-                for c in chunks:  # c[0] contains the uuid, c[1] contains the minion?
-                    
-                    data = f.read(chunk_size)
-                    chunk_uuid = c[0]
-                    print("CLIENT: CHUNK: " + str(c[1]))
-
-                    #minions = [master.get_minions()[_] for _ in c[1]] #wth
-
-                    s.send(('get minions').encode('utf-8'))
-                    minions = s.recv(4096)
-                    minions = pickle.loads(minions)
-                    #print(type(minions)) #
-                    self.send_to_minion(chunk_uuid, data, minions)
+            #raise er    
 
 
     def send_to_minion(self, chunk_uuid, data, minions):
@@ -534,6 +536,8 @@ class Client:
         minion = list(minions.keys())[0]
         minion = minions[minion]
         minions = list(minions.keys())[1:]
+        
+        
         #print(minion)
         #print(str(minions))
         minion_host, minion_port = minion
