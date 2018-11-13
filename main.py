@@ -339,11 +339,13 @@ class StorageNodeMinion():
 
                 # RECEIVE META
                 chunk_uuid = incomming[1]
-                minions = incomming[2]
+                chunksize = int(incomming[2])
+                
+                minions = client.recv(4096)
                 minions = pickle.loads(minions)
                 print(type(minions))
                 print(minions)
-                chunksize = int(incomming[3])
+                                     
 
                 # RECEIVE THE CHUNK
                 rec = True
@@ -430,6 +432,7 @@ class StorageNodeMinion():
             forwarding_socket.send(msg)
 
             time.sleep(0.1)
+            
 
 
             # START ACTUAL CHUNK DATA
@@ -544,14 +547,17 @@ class Client:
 
 
             # START META DATA
-            msg = "P" + SPLIT + str(chunk_uuid) + SPLIT + pickle.dumps(minions) + SPLIT + str(len(data)) #str(sys.getsizeof(data)) # get sizeof adds 33 extra :(
+            msg = "P" + SPLIT + str(chunk_uuid)  + SPLIT + str(len(data)) #str(sys.getsizeof(data)) # get sizeof adds 33 extra :(
 
 
             msg = msg.encode('utf-8') # string to bytewise
             minion_socket.send(msg)
 
             time.sleep(0.1)
-
+            minions = pickle.dumps(minions)
+            minion_socket.send(minions)
+            time.sleep(0.1)
+            
 
             # START ACTUAL CHUNK DATA
             minion_socket.sendall(data)
