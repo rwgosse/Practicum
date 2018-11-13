@@ -498,7 +498,7 @@ class Client:
 
             # separate incomming stream to get chunk uuid and minion meta data
             chunks = pickle.loads(incomming) # Error may occur if master is windows (EOF related) or has differing python version
-            print("CLIENT: CHUNK TYPE:" + str(type(chunks)))
+            print("CLIENT: CHUNKS TYPE:" + str(type(chunks)))
                 
 
         #s.close()
@@ -512,10 +512,10 @@ class Client:
             with open(source, "rb") as f:
                 print("CLIENT: # of chunks:" + str(len(chunks)))
                 for c in chunks:  # c[0] contains the uuid, c[1] contains the minion?
-                    print("CLIENT: CHUNK: " + str(c))
+                    
                     data = f.read(chunk_size)
                     chunk_uuid = c[0]
-
+                    print("CLIENT: CHUNK: " + str(c[1]))
 
                     #minions = [master.get_minions()[_] for _ in c[1]] #wth
 
