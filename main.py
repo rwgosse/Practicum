@@ -267,7 +267,7 @@ class StorageNodeMaster():
 
         request = client.recv(2048).decode()
         if (request == 'get minions'):
-            print(request)
+            #print(request)
             reply = (self.minions)#.encode('utf-8')
             reply = pickle.dumps(reply)
             client.send(reply)
@@ -379,7 +379,7 @@ class StorageNodeMinion():
             os.mkdir(DATA_DIR)
 
         print ("Acting as storage minion on port " + str(self.port))
-        print (self.sock)
+        #print (self.sock)
         self.sock.listen(5) # on self.sock
         while True: #
             client, address = self.sock.accept() # accept incomming connection
@@ -488,15 +488,13 @@ class Client:
             # chunks = master.write(dest, size)
 
 
-            while True:
-                incomming = s.recv(4096) #  a decent byte size.
+            
+            incomming = s.recv(4096) #  a decent byte size?.
 
-                if not incomming:
-                    break
-                # separate incomming stream to get chunk uuid and minion meta data
-                chunks = pickle.loads(incomming) # Error may occur if master is windows (EOF related) or has differing python version
-
-                break
+            # separate incomming stream to get chunk uuid and minion meta data
+            chunks = pickle.loads(incomming) # Error may occur if master is windows (EOF related) or has differing python version
+            print("CLIENT: CHUNK TYPE:" + str(type(chunks)))
+                
 
         #s.close()
 
@@ -507,8 +505,8 @@ class Client:
         # problem develops if there are not enough minions to carry the whole file - nov 7th
         if (chunks):
             with open(source, "rb") as f:
-                print(len(chunks))
-                for c in chunks:  # c[0] contains the uuid, c[1] contains the minion
+                print("CLIENT: length of chunks:" + str(len(chunks)))
+                for c in chunks:  # c[0] contains the uuid, c[1] contains the minion?
                     data = f.read(chunk_size)
                     chunk_uuid = c[0]
 
