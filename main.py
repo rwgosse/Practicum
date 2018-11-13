@@ -296,9 +296,10 @@ class StorageNodeMaster():
         chunks = []
         for i in range(0, num):
             chunk_uuid = uuid.uuid1()
-            print("MASTER: minion keys = " + str(self.minions.keys()))
+            
 
             nodes_ids = random.sample(self.minions.keys(), self.replication_factor) # do ensure more minions than replication factor
+            print("MASTER: " + str(chunk_uuid) + " -> " + str(nodes_ids))
             chunks.append((chunk_uuid, nodes_ids))
             self.file_table[dest].append((chunk_uuid, nodes_ids))
         return chunks # i noticed this was shifted right an extra tab, correction nov 9th
@@ -505,8 +506,9 @@ class Client:
         # problem develops if there are not enough minions to carry the whole file - nov 7th
         if (chunks):
             with open(source, "rb") as f:
-                print("CLIENT: length of chunks:" + str(len(chunks)))
+                print("CLIENT: # of chunks:" + str(len(chunks)))
                 for c in chunks:  # c[0] contains the uuid, c[1] contains the minion?
+                    print("CLIENT: CHUNK: " + str(c))
                     data = f.read(chunk_size)
                     chunk_uuid = c[0]
 
