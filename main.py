@@ -345,7 +345,7 @@ class StorageNodeMinion():
                 minions = pickle.loads(minions)
                 print(type(minions))
                 print(minions)
-                                     
+                        
 
                 # RECEIVE THE CHUNK
                 rec = True
@@ -564,7 +564,6 @@ class Client:
             minion_socket.send(minions)
             time.sleep(0.1)
             
-
             # START ACTUAL CHUNK DATA
             minion_socket.sendall(data)
 
