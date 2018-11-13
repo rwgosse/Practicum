@@ -411,7 +411,7 @@ class StorageNodeMinion():
         #minion = minions[minion]
         #minions = list(minions.keys())[1:]
         
-        #print(minion)
+        print("FORWARDING TO:" + str(minion))
         #print(str(minions))
         minion_host, minion_port = minion
         # Create a socket connection.
@@ -547,7 +547,7 @@ class Client:
 
 
             # START META DATA
-            msg = "P" + SPLIT + str(chunk_uuid)  + SPLIT + str(len(data)) #str(sys.getsizeof(data)) # get sizeof adds 33 extra :(
+            msg = "P" + SPLIT + str(chunk_uuid) + SPLIT + str(len(data)) #str(sys.getsizeof(data)) # get sizeof adds 33 extra :(
 
 
             msg = msg.encode('utf-8') # string to bytewise
