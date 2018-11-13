@@ -425,14 +425,16 @@ class StorageNodeMinion():
 
 
             # START META DATA
-            msg = "P" + SPLIT + str(chunk_uuid) + SPLIT + str(minions) + SPLIT + str(len(data)) #str(sys.getsizeof(data)) # get sizeof adds 33 extra :(
+            msg = "P" + SPLIT + str(chunk_uuid) + SPLIT + str(len(data)) #str(sys.getsizeof(data)) # get sizeof adds 33 extra :(
 
 
             msg = msg.encode('utf-8') # string to bytewise
             forwarding_socket.send(msg)
 
             time.sleep(0.1)
-            
+            minions = pickle.dumps(minions)
+            forwarding_socket.send(minions)
+            time.sleep(0.1)
 
 
             # START ACTUAL CHUNK DATA
