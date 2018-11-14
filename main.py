@@ -51,11 +51,15 @@ active_master = False
 active_minion = False
 active_miner = False
 active_client = False
+file_table = {}
+chunk_mapping = {}
 
 
 # signal handler to maintain local chunk file system
 def int_handler(signal, frame):
-    pickle.dump((storage_master.file_table, storage_master.chunk_mapping), open(FS_IMAGE, 'wb'))
+    global file_table
+    global chunk_mapping
+    pickle.dump((file_table, chunk_mapping), open(FS_IMAGE, 'wb'))
     sys.exit(0)
 
 def set_configuration():
@@ -183,10 +187,13 @@ class StorageNodeMaster(): # controler for storage master node
         self.sock.bind((self.host, self.port)) # bind the socket
         self.chunk_size = chunk_size
         self.replication_factor = replication_factor
-        self.file_table = {}
-        self.chunk_mapping = {}
-        if os.path.isfile(FS_IMAGE):
-            self.file_table, chunk_mapping = pickle.load(open(FS_IMAGE, 'rb'))
+        global file_table
+        global chunk_mapping 
+        if not os.path.isfile(FS_IMAGE):
+            pickle.dump((file_table, chunk_mapping), open(FS_IMAGE, 'wb'))
+        
+        file_table, chunk_mapping = pickle.load(open(FS_IMAGE, 'rb'))
+        
         self.minions = minions
         thread = threading.Thread(target=self.listen, args=())
         thread.daemon = False                            # Daemonize thread
@@ -227,7 +234,7 @@ class StorageNodeMaster(): # controler for storage master node
     def master_write(self, client_socket, client_address, dest, size):
         if self.exists(dest):
             pass #ignore for now
-        self.file_table[dest] = []
+        file_table[dest] = []
         
         request = client_socket.recv(2048).decode()
         if (request == 'get minions'):
@@ -250,8 +257,8 @@ class StorageNodeMaster(): # controler for storage master node
             
 
     def get_file_table_entry(self, fname):
-        if fname in self.file_table:
-            return self.file_table[fname]
+        if fname in file_table:
+            return file_table[fname]
         else:
             return None
 
@@ -265,7 +272,7 @@ class StorageNodeMaster(): # controler for storage master node
         return int(math.ceil(float(size) / self.chunk_size))
 
     def exists(self, file):
-        return file in self.file_table
+        return file in file_table
 
     def allocate_chunks(self, dest, num):
         chunks = []
@@ -274,7 +281,7 @@ class StorageNodeMaster(): # controler for storage master node
             nodes_ids = random.sample(self.minions.keys(), self.replication_factor) # do ensure more minions than replication factor
             print("MASTER: " + str(chunk_uuid) + " -> " + str(nodes_ids))
             chunks.append((chunk_uuid, nodes_ids))
-            self.file_table[dest].append((chunk_uuid, nodes_ids))
+            file_table[dest].append((chunk_uuid, nodes_ids))
         return chunks, nodes_ids # i noticed this was shifted right an extra tab, correction nov 9th YEA!
 
 # controller for chunk storage node
