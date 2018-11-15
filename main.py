@@ -172,7 +172,7 @@ class ChainServer(object):
                             chain_client_socket.send(pickle.dumps(block_info)) # package and send it
                             time.sleep(0.05) # this is risky but effective in spliting the byte stream
             chain_client_socket.close()
-            write_output(('CHAINSERVER: Chain Transmitted to: ' + chain_client_address))
+            write_output("CHAINSERVER: Chain Transmitted to: " + str(chain_client_address))
         except Exception as ex:
             chain_client_socket.close()
             write_output("CHAINSERVER: Transmission Error") # hopeful doesn't happen. FIX later to avoid catch all
@@ -964,7 +964,7 @@ if __name__ == "__main__":
         # ---------------------------------------------------------------------
         if active_miner:
             # mining tests -------------------------
-            add_transaction(miner_address, 'datahash', 'c6efb084e37d11e8bd44001a92daf3f8') # test with known uuid url
+            #add_transaction(miner_address, 'datahash', 'c6efb084e37d11e8bd44001a92daf3f8') # test with known uuid url
             # mine transactions into blocks
             if local_transactions:
                 for x in range(0, 5):
