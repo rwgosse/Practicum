@@ -46,7 +46,7 @@ DATA_DIR = 'chunkdata' # chunk data directory
 FS_IMAGE = 'fs.img' # chunk file mapping system
 CONFIG_FILE = 'settings.cfg' # local file with settings
 SPLIT = '\n' # used to line break socket streams
-TESTFILE = 'testfile.txt'
+TESTFILE = 'testfile.jpg'
 active_master = False
 active_minion = False
 active_miner = False
@@ -108,8 +108,9 @@ def set_configuration():
 
 # define a transaction
 class Transaction:
-    def __init__(self, user_data, data_url):
+    def __init__(self, user_data, data_hash, data_url):
         self.user_data = user_data          # identify user and provide security. how exactly? TBD...
+        self.data_hash = data_hash
         self.data_url = data_url            # encrypted URL of user's data storage location.
 
 # define a Block
@@ -128,6 +129,7 @@ class Block:
         info['timestamp'] = str(self.timestamp)
         info['previous_hash'] = str(self.previous_hash)
         info['user_data'] = str(self.user_data)
+        info['data_hash'] = str(self.data_hash)
         info['data_url'] = str(self.data_url)
         info['proof'] = self.proof
         info['hash'] = str(self.hash)
@@ -135,7 +137,7 @@ class Block:
 
     def new_hash(self):
         sha = hasher.sha256()
-        update_input = str(self.index) + str(self.timestamp) + str(self.user_data) + str(self.data_url) + str(self.previous_hash) + str(self.proof)
+        update_input = str(self.index) + str(self.timestamp) + str(self.user_data) + str(self.data_hash) + str(self.data_url) + str(self.previous_hash) + str(self.proof)
         sha.update(update_input.encode("utf-8"))
         return sha.hexdigest()
 
@@ -354,7 +356,14 @@ class StorageNodeMinion():
                         write_output("MINION: Received Chunk from:" + str(storage_client_address))
                 if len(incomming_minions) > 0: # are there additional minions to carry the chunk?
                     self.forward(chunk_uuid, data, incomming_minions) # then forward the chunk!
+                    
                 storage_client_socket.close()
+                
+                write_output("MINION: create transaction...")
+                sha = hasher.sha256()
+                sha.update(data.encode("utf-8"))
+                hashed_data = sha.hexdigest()
+                add_transaction(miner_address, hashed_data, chunk_uuid) # attach the user dat
                 break
 
 
@@ -461,6 +470,7 @@ class Client:
                         break
                 else:
                     print("no chunks found, corrupt file?")
+        write_output("CLIENT: <---    DOWNLOADED FILE: " + newfilename)
 
     def read_from_minion(self, chunk_uuid, minion):
         host, port = minion
@@ -541,6 +551,7 @@ class Client:
                         new_minions = [temp_minions[_] for _ in c[1]]
                         write_output("CLIENT: CHUNK: " + chunk_uuid)
                         self.send_to_minion(chunk_uuid, data, new_minions)
+            write_output("CLIENT: --->   UPLOADED FILE: " + source)
 
 
         except socket.error as er:
@@ -629,6 +640,7 @@ def get_blocks():
         block_version = str(block.version)
         block_timestamp = str(block.timestamp)
         block_user_data = str(block.user_data)
+        block_data_hash = str(block.data_hash)
         block_data_url = str(block.data_url)
         block_hash = str(block.hash)
         block_proof = str(block.proof)
@@ -639,6 +651,7 @@ def get_blocks():
             "version": block_version,
             "timestamp": block_timestamp,
             "user_data": block_user_data,
+            "data_hash": block_data_hash,
             "data_url": block_data_url,
             "hash": block_hash,
             "proof": block_proof,
@@ -650,6 +663,7 @@ def get_blocks():
                  + "\nversion:" + block_version
                  + "\ntimestamp:" + block_timestamp
                  + "\nuser_data:" + block_user_data
+                 + "\ndata_hash:" + block_data_hash
                  + "\ndata_url:" + block_data_url
                  + "\nhash:" + block_hash
                  + "\nproof of work:"  + block_proof
@@ -659,11 +673,11 @@ def get_blocks():
     return chain_to_send
 
 # add a new transaction to the list       POST
-def add_transaction(user_data, data_url):
+def add_transaction(user_data, data_hash, data_url):
     # get incomming transaction
     # add it to the list
-    write_output("New Transaction: " + user_data + " " + data_url)
-    local_transactions.append(Transaction(user_data, data_url))
+    write_output("New Transaction: " + user_data + " " + data_hash + " " + data_url)
+    local_transactions.append(Transaction(user_data, data_hash, data_url))
 
 def proof_of_work(last_proof):  # from snakecoin server example. More research here!!!
     #gets slower over time. +3 hrs for blocks after 24
@@ -722,6 +736,7 @@ def mine():
         current_transaction = local_transactions.pop(0) # first in, first out
         new_block_user_data = current_transaction.user_data
         new_block_data_url = current_transaction.data_url
+        new_data_hash = current_transaction.data_hash
 
         # Get the last mined block
         # Q? what happens if we come across our own transaction? tbd
@@ -747,6 +762,7 @@ def mine():
         block_data['timestamp'] = date.datetime.now()
         block_data['previous_hash'] = last_block_hash
         block_data['user_data'] = new_block_user_data
+        block_data['data_hash'] = new_data_hash
         block_data['proof'] = proof
         block_data['data_url'] = new_block_data_url
         new_block = Block(block_data)
@@ -862,7 +878,7 @@ def findchains(foreign_nodes):
                         break
                     # determine break point between objects
                     # currently the server is just time.sleep(0.05) between breaks
-                    dict = pickle.loads(incomming) # create a dictionary from the stream data
+                    dict = pickle.loads(incomming) # create a dictionary from the stream data # ** OCCASIONAL ERROR: _pickle.UnpicklingError: invalid load key, '5'
                     block_object = Block(dict) # use the dictionary to create a block object
                     # ____________________________________________________________________________________
                     # check for obsolete blocks in the incomming chain
@@ -943,15 +959,11 @@ if __name__ == "__main__":
             time.sleep(3)
             client.get(TESTFILE)
             
-    
-
-
-
 
         # ---------------------------------------------------------------------
         if active_miner:
             # mining tests -------------------------
-            add_transaction(miner_address, 'c6efb084-e37d-11e8-bd44-001a92daf3f8') # test with known uuid url
+            add_transaction(miner_address, 'datahash', 'c6efb084e37d11e8bd44001a92daf3f8') # test with known uuid url
             # mine transactions into blocks
             if local_transactions:
                 for x in range(0, 5):
