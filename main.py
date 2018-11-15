@@ -172,7 +172,7 @@ class ChainServer(object):
                             chain_client_socket.send(pickle.dumps(block_info)) # package and send it
                             time.sleep(0.05) # this is risky but effective in spliting the byte stream
             chain_client_socket.close()
-            write_output('CHAINSERVER: Chain Transmitted to: ', chain_client_address)
+            write_output(('CHAINSERVER: Chain Transmitted to: ' + chain_client_address))
         except Exception as ex:
             chain_client_socket.close()
             write_output("CHAINSERVER: Transmission Error") # hopeful doesn't happen. FIX later to avoid catch all
@@ -359,9 +359,10 @@ class StorageNodeMinion():
                     
                 storage_client_socket.close()
                 
+                
                 write_output("MINION: create transaction...")
                 sha = hasher.sha256()
-                sha.update(data.encode("utf-8"))
+                sha.update(data)
                 hashed_data = sha.hexdigest()
                 add_transaction(miner_address, hashed_data, chunk_uuid) # attach the user dat
                 break
