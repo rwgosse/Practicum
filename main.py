@@ -53,6 +53,7 @@ active_miner = False
 active_client = False
 file_table = {}
 chunk_mapping = {}
+RECEIVED_FILE_PREFIX = 'new_'
 
 
 # signal handler to maintain local chunk file system
@@ -70,23 +71,23 @@ def set_configuration():
     logging.basicConfig(filename=OUTPUTFNAME, filemode='a', format='%(name)s - %(levelname)s - %(message)s') # log errors to file
     conf = configparser.ConfigParser()
     conf.readfp(open(CONFIG_FILE))
-    
+
     if (conf.get('master', 'active_master') == 'yes'):
         print ("active master")
         active_master = True
-        
+
     if (conf.get('minion', 'active_minion') == 'yes'):
         print ("active minion")
         active_minion = True
-        
+
     if (conf.get('miner', 'active_miner') == 'yes'):
         print ("active miner")
         active_miner = True
-    
+
     if (conf.get('client', 'active_client') == 'yes'):
         print ("active client")
         active_client = True
-    
+
     miner_address = get_miner_address(conf)
     chunk_size = int(conf.get('master', 'chunk_size'))
     replication_factor = int(conf.get('master', 'replication_factor'))
@@ -96,7 +97,7 @@ def set_configuration():
     for m in minionslist:
         id, host, port = m.split(':')
         minions[id] = (host, port)
-    
+
 
     foreign_nodes = sync_node_list(conf) # store urls of other nodes in a list
     blockchain = sync_local_chain(foreign_nodes) # create a list of the local blockchain
@@ -152,7 +153,7 @@ class ChainServer(object):
 
     def listen(self):
         # listen for incomming chain requests
-        print ("CHAINSERVER: PORT# " + str(self.port))
+        write_output("CHAINSERVER: PORT# " + str(self.port))
         self.sock.listen(5) # on self.sock
         while True: #
             chain_client_socket, chain_client_address = self.sock.accept() # accept incomming connection
@@ -166,13 +167,13 @@ class ChainServer(object):
                         filepath = '%s/%s' % (BLOCKCHAIN_DATA_DIR, filename) # grab it
                         with open(filepath, 'r') as block_file: # and open it up
                             block_info = json.load(block_file) # load it's data
-                            chain_client_socket.send(pickle.dumps(block_info)) # package and send it 
+                            chain_client_socket.send(pickle.dumps(block_info)) # package and send it
                             time.sleep(0.05) # this is risky but effective in spliting the byte stream
             chain_client_socket.close()
-            print ('CHAINSERVER: Chain Transmitted to: ', chain_client_address)
+            write_output('CHAINSERVER: Chain Transmitted to: ', chain_client_address)
         except Exception as ex:
             chain_client_socket.close()
-            print ("CHAINSERVERs Transmission Error") # hopeful doesn't happen. FIX later to avoid catch all
+            write_output("CHAINSERVER: Transmission Error") # hopeful doesn't happen. FIX later to avoid catch all
             raise ex
             return False
 
@@ -188,12 +189,12 @@ class StorageNodeMaster(): # controler for storage master node
         self.chunk_size = chunk_size
         self.replication_factor = replication_factor
         global file_table
-        global chunk_mapping 
+        global chunk_mapping
         if not os.path.isfile(FS_IMAGE):
             pickle.dump((file_table, chunk_mapping), open(FS_IMAGE, 'wb'))
-        
+
         file_table, chunk_mapping = pickle.load(open(FS_IMAGE, 'rb'))
-        
+
         self.minions = minions
         thread = threading.Thread(target=self.listen, args=())
         thread.daemon = False                            # Daemonize thread
@@ -201,7 +202,7 @@ class StorageNodeMaster(): # controler for storage master node
 
 
     def listen(self): # we will receive either a read command or a write command
-        print ("MASTER: Port # " + str(self.port))
+        write_output("MASTER: Port # " + str(self.port))
         self.sock.listen(5) # on self.sock
         incomming = ''
         while True: #
@@ -210,51 +211,59 @@ class StorageNodeMaster(): # controler for storage master node
             if not incomming:
                 break
             incomming = incomming.split(SPLIT) # determine nature of request
-            
+
             if incomming[0].startswith("P"): # put request
-                print("MASTER: incomming put request" + str(client_address))
+                write_output("MASTER: incomming put request" + str(client_address))
                 dest = incomming[1]
                 size = incomming[2]
                 threading.Thread(target=self.master_write, args=(client_socket, client_address, dest, size)).start() # pass connection to a new thread
 
             if incomming[0].startswith("G"): #get request:
-                print("MASTER: incomming get request" + str(client_address))
+                write_output("MASTER: incomming get request" + str(client_address))
                 fname = incomming[1]
                 threading.Thread(target=self.master_read, args=(client_socket, client_address, fname)).start() # pass connection to a new thread
 
             if incomming[0].startswith("M"): #map request:
-                print("MASTER: incomming map request" + str(client_address))
-                node_ids = incomming[1]
+                write_output("MASTER: incomming map request" + str(client_address))
+                #node_ids = incomming[1]
                 threading.Thread(target=self.get_minions, args=(client_socket, client_address, node_ids)).start() # pass connection to a new thread
 
-    def master_read(self, client_socket, client_address, fname):
-        mapping = self.file_table[fname]
-        client_socket.sendall(mapping)
+    def master_read(self, client_socket, client_address, filename):
+        print(file_table)
+        mapping = file_table[filename]
+        mapping = pickle.dumps(mapping)
+        client_socket.send(mapping)
+        msg = client_socket.recv(1096).decode()
+        if (msg == "M"):
+            minions2send = pickle.dumps(self.get_minions())
+            client_socket.send(minions2send)
+
+
+
 
     def master_write(self, client_socket, client_address, dest, size):
         if self.exists(dest):
             pass #ignore for now
         file_table[dest] = []
-        
+
         request = client_socket.recv(2048).decode()
         if (request == 'get minions'):
             reply = (self.minions)
-            print("" + str(type(reply)))
             reply = pickle.dumps(reply)
             client_socket.send(reply)
-        
+
         request = client_socket.recv(2048).decode()
         if (request == 'get data'):
             num_chunks = self.calculate_number_of_chunks(size)
             chunks, nodes_ids = self.allocate_chunks(dest, num_chunks)
             chunks = pickle.dumps(chunks)
             client_socket.send(chunks)
-        
+
         request = client_socket.recv(2048).decode()
         if (request == 'get nodes_ids'):
             nodes_ids = pickle.dumps(nodes_ids)
             client_socket.send(nodes_ids)
-            
+
 
     def get_file_table_entry(self, fname):
         if fname in file_table:
@@ -279,9 +288,10 @@ class StorageNodeMaster(): # controler for storage master node
         for i in range(0, num):
             chunk_uuid = uuid.uuid1()
             nodes_ids = random.sample(self.minions.keys(), self.replication_factor) # do ensure more minions than replication factor
-            print("MASTER: " + str(chunk_uuid) + " -> " + str(nodes_ids))
-            chunks.append((chunk_uuid, nodes_ids))
-            file_table[dest].append((chunk_uuid, nodes_ids))
+            print("MASTER: " + chunk_uuid.hex + " -> " + str(nodes_ids))
+            chunks.append((chunk_uuid.hex, nodes_ids))
+            file_table[dest].append((chunk_uuid.hex, nodes_ids))
+            pickle.dump((file_table, chunk_mapping), open(FS_IMAGE, 'wb'))
         return chunks, nodes_ids # i noticed this was shifted right an extra tab, correction nov 9th YEA!
 
 # controller for chunk storage node
@@ -315,7 +325,7 @@ class StorageNodeMinion():
             incomming = (storage_client_socket.recv(2048).decode())
             if not incomming:
                 break
-            incomming = incomming.split(SPLIT) # determine nature of request        
+            incomming = incomming.split(SPLIT) # determine nature of request
             if incomming[0].startswith("P"): # put request
                 # RECEIVE META
                 chunk_uuid = incomming[1]
@@ -349,14 +359,28 @@ class StorageNodeMinion():
 
 
 
-            if incomming[0].startswith("G"): #get request:
-                print("MINION: incomming get request" + str(client))
-                fname = incomming[1]
-                #threading.Thread(target=self.master_read, args=(storage_client_socket, address, fname)).start() # pass connection to a new thread
+            if incomming[0].startswith("G"): #get request:         
+                chunk_uuid = incomming[1]
+                chunk_addr = DATA_DIR +"/"+ chunk_uuid
+                if not os.path.isfile(chunk_addr):
+                    chunk = None
+                with open(chunk_addr, 'rb') as f:
+                    chunk = f.read()             
+                chunk = pickle.dumps(chunk)
+                chunksize = len(chunk)
+                chunksize = str(chunksize)
+                storage_client_socket.send(chunksize.encode('utf-8'))
+                time.sleep(0.1)         
+                incomming = storage_client_socket.recv(1096).decode()
+                if incomming == 'go':
+                    storage_client_socket.sendall(chunk)
+                reply = storage_client_socket.recv(1024).decode()
+                if (reply == 'done'):
+                    write_output("MINION: CHUNK SENT TO CLIENT " + str(storage_client_address))
 
+                else:
+                    write_output("MINION: FAILED TO SEND CHUNK " + str(storage_client_address))
 
-    def minion_get(self, client, chunk_uuid):
-        pass
 
     def forward(self, chunk_uuid, data, incomming_minions):
         minion = incomming_minions[0]
@@ -367,7 +391,7 @@ class StorageNodeMinion():
             timeout = 5
             forwarding_socket.settimeout(timeout)
             forwarding_socket.connect((minion_host, int(minion_port)))
-            
+
 
             # START META DATA
             msg = "P" + SPLIT + str(chunk_uuid) + SPLIT + str(len(data)) #str(sys.getsizeof(data)) # get sizeof adds 33 extra :(
@@ -378,20 +402,19 @@ class StorageNodeMinion():
             if (request == 'get minions'):
                 minions = pickle.dumps(incomming_minions)
                 forwarding_socket.send(minions)
-                
+
             request = forwarding_socket.recv(2048).decode()
             if (request == 'get data'):
                 # START ACTUAL CHUNK DATA
                 forwarding_socket.sendall(data)
-                
+
             request = forwarding_socket.recv(2048).decode()
             if (request == 'done'):
                 write_output("MINION: Forwarded to: " + minion_host)
 
 
         except socket.error as er:
-            print("MINION: no contact with minion: " + minion_host)
-            #print("MINION: save likely failed - nov 8th")
+            write_output("MINION: no contact with minion: " + minion_host)
             #raise er
 
     def delete_block(self, uuid):
@@ -403,11 +426,71 @@ class Client:
     def __init__(self):
         pass
 
-    def get(self, master, fname):
-        pass
+    def get(self, fname):
+        global master_address
+        global master_port
 
-    def read_minion(self, block_uuid, minion):
-        pass
+        try:
+            socket_to_master = socket.socket(socket.AF_INET, socket.SOCK_STREAM)# Create a socket connection.
+            socket_to_master.settimeout(5)
+            socket_to_master.connect((master_address, master_port))
+
+            msg = "G" + SPLIT + str(fname) # get file by name
+            msg = msg.encode('utf-8') # string to bytewise
+            socket_to_master.send(msg)
+            table = socket_to_master.recv(4096)
+            table = pickle.loads(table)
+
+            msg = "M" # get minions from the master
+            msg = msg.encode('utf-8') # string to bytewise
+            socket_to_master.send(msg)
+            minion_list = socket_to_master.recv(4096)
+            minion_list = pickle.loads(minion_list)
+            
+        except socket.error as er:
+            write_output("CLIENT: failed to connect with master")
+            raise er
+        
+        newfilename = RECEIVED_FILE_PREFIX + fname
+        with open(newfilename, "wb") as f:         
+            for chunk in table:
+                for m in [minion_list[_] for _ in chunk[1]]:
+                    data = self.read_from_minion(chunk[0], m)
+                    if data:
+                        f.write(data)
+                        break
+                else:
+                    print("no chunks found, corrupt file?")
+
+    def read_from_minion(self, chunk_uuid, minion):
+        host, port = minion
+        try:
+            socket_to_minion = socket.socket(socket.AF_INET, socket.SOCK_STREAM)# Create a socket connection.
+            socket_to_minion.settimeout(5)
+            socket_to_minion.connect((host, int(port)))
+            msg = "G" + SPLIT + chunk_uuid # get minions from the master
+            msg = msg.encode('utf-8') # string to bytewise
+            socket_to_minion.send(msg)
+            chunksize = socket_to_minion.recv(32).decode()
+            msg = "go"
+            msg = msg.encode('utf-8') # string to bytewise
+            socket_to_minion.send(msg)
+            rec = True
+            chunk = b'' 
+            while rec:   
+                stream = socket_to_minion.recv(1024)
+                chunk += stream
+                if (len(chunk) == int(chunksize)):
+                    rec = False
+            msg = "done"
+            msg = msg.encode('utf-8') # string to bytewise
+            socket_to_minion.send(msg)        
+            chunk = pickle.loads(chunk)
+            return chunk
+        
+        except socket.error as er:
+            write_output("CLIENT: failed to connect with minion")
+            raise er
 
     def put(self, source):
         timeout = 20
@@ -420,14 +503,14 @@ class Client:
         global master_address
         global master_port
 
-        dest = 'test' # junk data string
+        dest = source # junk data string
 
         try:
             # Create a socket connection.
             socket_to_master = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             socket_to_master.settimeout(5)
             socket_to_master.connect((master_address, master_port))
-            
+
             msg = "P" + SPLIT + str(dest) + SPLIT + str(size) # squish the destination and file size together
             msg = msg.encode('utf-8') # string to bytewise
             socket_to_master.send(msg)
@@ -441,28 +524,28 @@ class Client:
             incomming = socket_to_master.recv(4096) # separate incomming stream to get chunk uuid and minion meta data
             chunks = pickle.loads(incomming) # Error may occur if master is windows (EOF related) or has differing python version
 
-            
+
             socket_to_master.send(('get nodes_ids').encode('utf-8'))
             nodes_ids = socket_to_master.recv(4096)
             nodes_ids = pickle.loads(nodes_ids)
- 
-                
+
+
             # problem develops if there are not enough minions to carry the whole file - nov 7th
             if (chunks):
-                print("CLIENT: # of chunks:" + str(len(chunks)))
+                write_output("CLIENT: # of chunks:" + str(len(chunks)))
                 with open(source, "rb") as f:
                     for c in chunks:  # c[0] contains the uuid, c[1] contains the minion? no
                         data = f.read(chunk_size)
                         chunk_uuid = c[0]
-                   
+
                         new_minions = [temp_minions[_] for _ in c[1]]
-                        print("CLIENT: CHUNK: " + chunk_uuid.hex)
+                        write_output("CLIENT: CHUNK: " + chunk_uuid)
                         self.send_to_minion(chunk_uuid, data, new_minions)
-                    
-                    
+
+
         except socket.error as er:
             write_output("CLIENT: failed to connect with master")
-            raise er    
+            #raise er
 
 
     def send_to_minion(self, chunk_uuid, data, new_minions):
@@ -474,7 +557,7 @@ class Client:
             timeout = 5
             minion_socket.settimeout(timeout)
             minion_socket.connect((minion_host, int(minion_port)))
-            
+
 
             # START META DATA
             msg = "P" + SPLIT + str(chunk_uuid) + SPLIT + str(len(data)) #str(sys.getsizeof(data)) # get sizeof adds 33 extra :(
@@ -485,19 +568,19 @@ class Client:
             if (request == 'get minions'):
                 minions = pickle.dumps(new_minions)
                 minion_socket.send(minions)
-                
+
             request = minion_socket.recv(2048).decode()
             if (request == 'get data'):
                 # START ACTUAL CHUNK DATA
                 minion_socket.sendall(data)
-                
+
             request = minion_socket.recv(2048).decode()
             if (request == 'done'):
                 write_output("CLIENT: Sent to minion: " + minion_host)
 
         except socket.error as er:
-            print("CLIENT: no contact with minion: " + minion_host)
-            print("CLIENT: save likely failed - nov 8th")
+            write_output("CLIENT: no contact with minion: " + minion_host)
+            write_output("CLIENT: save likely failed - nov 8th")
             #raise er
 
     def send_to_master(self):
@@ -761,15 +844,12 @@ def consensus(blockchain, foreign_nodes):
 def findchains(foreign_nodes):
     timeout = 2
     global localhost
-    # query other listed nodes in the network for copies of their blockchains
-    list_of_chains = []
-    for url in foreign_nodes:
-        # get their chain using some sort of get request
+    list_of_chains = []# query other listed nodes in the network for copies of their blockchains
+    for url in foreign_nodes:# get their chain using some sort of get request
         peer_address = url[0]
         if (peer_address != get_my_ip()):
             peer_port = url[1]
-            # Create a socket connection.
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)# Create a socket connection.
             try:
                 s.settimeout(timeout)
                 s.connect((peer_address, peer_port))
@@ -782,12 +862,8 @@ def findchains(foreign_nodes):
                         break
                     # determine break point between objects
                     # currently the server is just time.sleep(0.05) between breaks
-                    #print (incomming)
                     dict = pickle.loads(incomming) # create a dictionary from the stream data
-                    #print(type(dict)) # should return dict
                     block_object = Block(dict) # use the dictionary to create a block object
-                    #print(type(block_object)) # should return block
-
                     # ____________________________________________________________________________________
                     # check for obsolete blocks in the incomming chain
                     # we want to discard those blocks that have an
@@ -809,10 +885,8 @@ def findchains(foreign_nodes):
             except socket.timeout as ex:
                 write_output("NA:" + str(peer_address) + " : " + str(peer_port))
                 #raise ex
-
             except socket.error as ex:
                 write_output("ERR:" + str(peer_address) + " : " + str(peer_port))
-
     return list_of_chains
 
 
@@ -823,7 +897,6 @@ def get_my_ip():
     #s.connect(("8.8.8.8", 80)) # not reliable, there may not be an assumed Internet connection
     #ip = s.getsockname()[0]
     #s.close()
-
     # Better, and will function on those networks without an Internet connection
     ip = ((([ip for ip in socket.gethostbyname_ex(socket.gethostname())[2]
           if not ip.startswith("127.")] or [[(s.connect(("8.8.8.8", 53)),
@@ -838,8 +911,6 @@ localhost = get_my_ip()
 local_transactions = [] # store transactions in a list
 if __name__ == "__main__":
     try:
-        #global blockchain
-        #global miner_address
         global master_address
         global master_port
 
@@ -849,31 +920,33 @@ if __name__ == "__main__":
         print ("(p)ut  (g)et  (m)ine  e(x)it")
         #1/0 #test exception log
 
-
-
         write_output("start tests...")
         time.sleep(0.1)
         # -----START SERVICES--------------------------------------------------
-        
+
         chainserver = ChainServer(localhost, CHAIN_PORT)
-                        
+
 
         if active_master:
             storage_master = StorageNodeMaster(localhost, MASTER_PORT, all_minions, chunk_size, replication_factor)
-            
+
         if active_minion:
             storage_minion = StorageNodeMinion(localhost, MINION_PORT)
-        
-        if (active_master or active_minion): 
+
+        if (active_master or active_minion):
             signal.signal(signal.SIGINT, int_handler) # set up handler for chunk table image
-        
-        
+
+
         if active_client:
             client = Client()
             client.put(TESTFILE)
+            time.sleep(3)
+            client.get(TESTFILE)
+            
+    
 
-        
-        
+
+
 
         # ---------------------------------------------------------------------
         if active_miner:
