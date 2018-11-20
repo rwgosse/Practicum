@@ -46,7 +46,7 @@ DATA_DIR = 'chunkdata' # chunk data directory
 FS_IMAGE = 'fs.img' # chunk file mapping system
 CONFIG_FILE = 'settings.cfg' # local file with settings
 SPLIT = '\n' # used to line break socket streams
-TESTFILE = 'testfile.jpg'
+TESTFILE = 'testfile.txt'
 active_master = False
 active_minion = False
 active_miner = False
@@ -54,6 +54,7 @@ active_client = False
 file_table = {}
 chunk_mapping = {}
 RECEIVED_FILE_PREFIX = 'new_'
+PASSPHRASE = "a9c205e8eefc49333a23ade12e92ac5e" # default md5 Passphrase.
 
 
 # signal handler to maintain local chunk file system
@@ -356,10 +357,10 @@ class StorageNodeMinion():
                         write_output("MINION: Received Chunk from:" + str(storage_client_address))
                 if len(incomming_minions) > 0: # are there additional minions to carry the chunk?
                     self.forward(chunk_uuid, data, incomming_minions) # then forward the chunk!
-                    
+
                 storage_client_socket.close()
-                
-                
+
+
                 write_output("MINION: create transaction...")
                 sha = hasher.sha256()
                 sha.update(data)
@@ -369,18 +370,18 @@ class StorageNodeMinion():
 
 
 
-            if incomming[0].startswith("G"): #get request:         
+            if incomming[0].startswith("G"): #get request:
                 chunk_uuid = incomming[1]
-                chunk_addr = DATA_DIR +"/"+ chunk_uuid
+                chunk_addr = DATA_DIR + "/" + chunk_uuid
                 if not os.path.isfile(chunk_addr):
                     chunk = None
                 with open(chunk_addr, 'rb') as f:
-                    chunk = f.read()             
+                    chunk = f.read()
                 chunk = pickle.dumps(chunk)
                 chunksize = len(chunk)
                 chunksize = str(chunksize)
                 storage_client_socket.send(chunksize.encode('utf-8'))
-                time.sleep(0.1)         
+                time.sleep(0.1)
                 incomming = storage_client_socket.recv(1096).decode()
                 if incomming == 'go':
                     storage_client_socket.sendall(chunk)
@@ -456,17 +457,18 @@ class Client:
             socket_to_master.send(msg)
             minion_list = socket_to_master.recv(4096)
             minion_list = pickle.loads(minion_list)
-            
+
         except socket.error as er:
             write_output("CLIENT: failed to connect with master")
             raise er
-        
+
         newfilename = RECEIVED_FILE_PREFIX + fname
-        with open(newfilename, "wb") as f:         
+        with open(newfilename, "wb") as f:
             for chunk in table:
                 for m in [minion_list[_] for _ in chunk[1]]:
                     data = self.read_from_minion(chunk[0], m)
                     if data:
+                        data = encrypter.decrypt(data) 
                         f.write(data)
                         break
                 else:
@@ -487,18 +489,18 @@ class Client:
             msg = msg.encode('utf-8') # string to bytewise
             socket_to_minion.send(msg)
             rec = True
-            chunk = b'' 
-            while rec:   
+            chunk = b''
+            while rec:
                 stream = socket_to_minion.recv(1024)
                 chunk += stream
                 if (len(chunk) == int(chunksize)):
                     rec = False
             msg = "done"
             msg = msg.encode('utf-8') # string to bytewise
-            socket_to_minion.send(msg)        
+            socket_to_minion.send(msg)
             chunk = pickle.loads(chunk)
             return chunk
-        
+
         except socket.error as er:
             write_output("CLIENT: failed to connect with minion")
             raise er
@@ -547,6 +549,7 @@ class Client:
                 with open(source, "rb") as f:
                     for c in chunks:  # c[0] contains the uuid, c[1] contains the minion? no
                         data = f.read(chunk_size)
+                        data = encrypter.encrypt(data) 
                         chunk_uuid = c[0]
 
                         new_minions = [temp_minions[_] for _ in c[1]]
@@ -605,6 +608,41 @@ class Client:
                     break
         except socket.error as er:
             raise er
+
+
+# Provide Capacity to Encrypt and Decrypt Messages Using AES
+class AESCipher(object):
+
+    def __init__(self, key):
+        print ("AESCipher Start...")
+        self.bs = 32
+        self.key = hasher.sha256(key.encode()).digest()
+
+    def encrypt(self, raw):
+        raw = self._pad(raw)
+        iv = Random.new().read(AES.block_size)
+        cipher = AES.new(self.key, AES.MODE_CBC, iv)
+        return base64.b64encode(iv + cipher.encrypt(raw))
+
+    def decrypt(self, enc):
+        try:
+            enc = base64.b64decode(enc)
+            iv = enc[:AES.block_size]
+            cipher = AES.new(self.key, AES.MODE_CBC, iv)
+            return self._unpad(cipher.decrypt(enc[AES.block_size:])).decode('utf-8')
+
+        except ValueError as e:
+            print ("Decrypt Error, Bad Cipher Length")
+            return e
+
+
+    def _pad(self, s):
+        return s + (self.bs - len(s) % self.bs) * chr(self.bs - len(s) % self.bs)
+
+    @staticmethod
+    def _unpad(s):
+        return s[:-ord(s[len(s)-1:])]
+
 
 # create a new block to be the first in a new chain.
 # data here will be for the most place symbolic or otherwise meaningless.
@@ -932,6 +970,8 @@ if __name__ == "__main__":
         global master_port
 
 
+        passphrase = PASSPHRASE
+        encrypter = AESCipher(passphrase)
         blockchain, miner_address, master_address, master_port, all_minions, chunk_size, replication_factor = set_configuration()
         print ("Hello World")
         print ("(p)ut  (g)et  (m)ine  e(x)it")
@@ -959,7 +999,7 @@ if __name__ == "__main__":
             client.put(TESTFILE)
             time.sleep(3)
             client.get(TESTFILE)
-            
+
 
         # ---------------------------------------------------------------------
         if active_miner:
