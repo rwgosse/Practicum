@@ -28,6 +28,9 @@ import threading
 import random
 import signal
 import configparser
+from Crypto.Cipher import AES
+from Crypto import Random
+import base64
 
 # Project Meta Variables
 __author__ = "Richard W Gosse - A00246425" # name, student number
@@ -637,6 +640,7 @@ class AESCipher(object):
 
 
     def _pad(self, s):
+        
         return s + (self.bs - len(s) % self.bs) * chr(self.bs - len(s) % self.bs)
 
     @staticmethod
