@@ -49,7 +49,7 @@ DATA_DIR = 'chunkdata' # chunk data directory
 FS_IMAGE = 'fs.img' # chunk file mapping system
 CONFIG_FILE = 'settings.cfg' # local file with settings
 SPLIT = '\n' # used to line break socket streams
-TESTFILE = 'testfile.txt'
+TESTFILE = 'testfile.jpg'
 active_master = False
 active_minion = False
 active_miner = False
@@ -58,6 +58,10 @@ file_table = {}
 chunk_mapping = {}
 RECEIVED_FILE_PREFIX = 'new_'
 PASSPHRASE = "a9c205e8eefc49333a23ade12e92ac5e" # default md5 Passphrase.
+BLOCK_SIZE = 32 # the block size for the cipher object; must be 16, 24, or 32 for AES
+PADDING = '{'# the character used for padding--with a block cipher such as AES, the value
+    # you encrypt must be a multiple of BLOCK_SIZE in length.  This character is
+    # used to ensure that your value is always a multiple of BLOCK_SIZE
 
 
 # signal handler to maintain local chunk file system
@@ -236,6 +240,7 @@ class StorageNodeMaster(): # controler for storage master node
 
     def master_read(self, client_socket, client_address, filename):
         print(file_table)
+        filename = filename + '.enc'
         mapping = file_table[filename]
         mapping = pickle.dumps(mapping)
         client_socket.send(mapping)
@@ -471,11 +476,13 @@ class Client:
                 for m in [minion_list[_] for _ in chunk[1]]:
                     data = self.read_from_minion(chunk[0], m)
                     if data:
-                        data = encrypter.decrypt(data) 
                         f.write(data)
                         break
                 else:
                     print("no chunks found, corrupt file?")
+                    
+        encrypter.decrypt(newfilename)
+        #source_enc = (source + '.enc')
         write_output("CLIENT: <---    DOWNLOADED FILE: " + newfilename)
 
     def read_from_minion(self, chunk_uuid, minion):
@@ -510,6 +517,8 @@ class Client:
 
     def put(self, source):
         timeout = 20
+        encrypter.encrypt(passphrase, source)
+        source_enc = (source + '.enc')
         size = os.path.getsize(source)
         chunks = ''
 
@@ -519,7 +528,7 @@ class Client:
         global master_address
         global master_port
 
-        dest = source # junk data string
+        dest = source_enc ## ?? whats this for?
 
         try:
             # Create a socket connection.
@@ -549,12 +558,10 @@ class Client:
             # problem develops if there are not enough minions to carry the whole file - nov 7th
             if (chunks):
                 write_output("CLIENT: # of chunks:" + str(len(chunks)))
-                with open(source, "rb") as f:
+                with open(source_enc, "rb") as f:
                     for c in chunks:  # c[0] contains the uuid, c[1] contains the minion? no
                         data = f.read(chunk_size)
-                        data = encrypter.encrypt(data) 
                         chunk_uuid = c[0]
-
                         new_minions = [temp_minions[_] for _ in c[1]]
                         write_output("CLIENT: CHUNK: " + chunk_uuid)
                         self.send_to_minion(chunk_uuid, data, new_minions)
@@ -614,38 +621,25 @@ class Client:
 
 
 # Provide Capacity to Encrypt and Decrypt Messages Using AES
-class AESCipher(object):
-
-    def __init__(self, key):
-        print ("AESCipher Start...")
-        self.bs = 32
-        self.key = hasher.sha256(key.encode()).digest()
-
-    def encrypt(self, raw):
-        raw = self._pad(raw)
-        iv = Random.new().read(AES.block_size)
-        cipher = AES.new(self.key, AES.MODE_CBC, iv)
-        return base64.b64encode(iv + cipher.encrypt(raw))
-
-    def decrypt(self, enc):
-        try:
-            enc = base64.b64decode(enc)
-            iv = enc[:AES.block_size]
-            cipher = AES.new(self.key, AES.MODE_CBC, iv)
-            return self._unpad(cipher.decrypt(enc[AES.block_size:])).decode('utf-8')
-
-        except ValueError as e:
-            print ("Decrypt Error, Bad Cipher Length")
-            return e
+class AESCipher():
 
 
-    def _pad(self, s):
-        
-        return s + (self.bs - len(s) % self.bs) * chr(self.bs - len(s) % self.bs)
+    # one-liner to sufficiently pad the text to be encrypted
+    def pad(self, s): 
+        return s + (BLOCK_SIZE - len(s) % BLOCK_SIZE) * PADDING
 
-    @staticmethod
-    def _unpad(s):
-        return s[:-ord(s[len(s)-1:])]
+    # encrypt with AES, encode with base64
+    def encrypt(self, key, plaindata):
+        key = self.pad(key)
+        cipher = AES.new(key)
+        enc = cipher.encrypt(self.pad(plaindata))#cipher.encrypt(s)#
+        return base64.b64encode(enc)
+
+    def decrypt(self, key, encodeddata): 
+        key = self.pad(key)
+        cipher = AES.new(key)
+        b64 = base64.b64decode(encodeddata)
+        return cipher.decrypt(b64)
 
 
 # create a new block to be the first in a new chain.
@@ -657,6 +651,7 @@ def create_genesis_block():
     block_data['timestamp'] = date.datetime.now()
     block_data['previous_hash'] = "0"
     block_data['user_data'] = "none"
+    block_data['data_hash'] = "none"
     block_data["proof"] = '00000048_GENESIS_BLOCKb16e9ac6cb' #use '9' when using pof1, for pof2 use 00000048_GENESIS_BLOCKb16e9ac6cb
     block_data['data_url'] = "0"
     first_block = Block(block_data)
@@ -974,8 +969,8 @@ if __name__ == "__main__":
         global master_port
 
 
-        passphrase = PASSPHRASE
-        encrypter = AESCipher(passphrase)
+        passphrase = 'PASSPHRASE'
+        encrypter = AESCipher()
         blockchain, miner_address, master_address, master_port, all_minions, chunk_size, replication_factor = set_configuration()
         print ("Hello World")
         print ("(p)ut  (g)et  (m)ine  e(x)it")
