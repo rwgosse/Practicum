@@ -41,7 +41,7 @@ OUTPUTFNAME = "./logfile.txt" # output log file
 BLOCKCHAIN_DATA_DIR = 'chaindata' # folder for json formatted blocks
 #NODE_LIST = "./nodes.cfg" # absored into settings.cfg and new parser
 #USER_SETTINGS = "./user.cfg" # absored into settings.cfg and new parser
-HOST = '192.168.0.15' # local address ** unused
+#HOST = '192.168.0.15' # local address ** unused
 CHAIN_PORT = 8000  # local port for hosting of chain data
 MASTER_PORT = 8100 # local port for hosting of storage master
 MINION_PORT = 8200 # local port for hosting of storage minion
@@ -49,20 +49,16 @@ DATA_DIR = 'chunkdata' # chunk data directory
 FS_IMAGE = 'fs.img' # chunk file mapping system
 CONFIG_FILE = 'settings.cfg' # local file with settings
 SPLIT = '\n' # used to line break socket streams
-TESTFILE = 'testfile.txt'
-active_master = False
-active_minion = False
-active_miner = False
-active_client = False
-file_table = {}
-chunk_mapping = {}
-RECEIVED_FILE_PREFIX = 'new_'
+TESTFILE = 'testfile.txt' # file used for uploads & downloads during dev
+RECEIVED_FILE_PREFIX = 'new_' # for demo purposes and so I don't loose orig files if i do something dumb
 PASSPHRASE = "a9c205e8eefc49333a23ade12e92ac5e" # default md5 Passphrase.
 BLOCK_SIZE = 32 # the block size for the cipher object; must be 16, 24, or 32 for AES
-PADDING = '{'# the character used for padding--with a block cipher such as AES, the value
-    # you encrypt must be a multiple of BLOCK_SIZE in length.  This character is
-    # used to ensure that your value is always a multiple of BLOCK_SIZE
-
+active_master = False # default to off. control in settings.cfg
+active_minion = False # default to off. control in settings.cfg
+active_miner = False # default to off. control in settings.cfg
+active_client = False # default to off. control in settings.cfg
+file_table = {} # represents the FS_IMAGE while in use. 
+chunk_mapping = {} # maps filenames to their chunks and minion locations
 
 # signal handler to maintain local chunk file system
 def int_handler(signal, frame):
@@ -105,24 +101,20 @@ def set_configuration():
     for m in minionslist:
         id, host, port = m.split(':')
         minions[id] = (host, port)
-
-
     foreign_nodes = sync_node_list(conf) # store urls of other nodes in a list
     blockchain = sync_local_chain(foreign_nodes) # create a list of the local blockchain
     blockchain = consensus(blockchain, foreign_nodes) # ensure that our blockchain is the longest
-    #if os.path.isfile(FS_IMAGE): #moved
-    #    storage_master.file_table, storage_master.chunk_mapping = pickle.load(open(FS_IMAGE, 'rb')) #moved
     return blockchain, miner_address, master_address, master_port, minions, chunk_size, replication_factor
 
-# define a transaction
-class Transaction:
+
+class Transaction: # define a transaction, which is a record of an uploaded chunk
     def __init__(self, user_data, data_hash, data_url):
         self.user_data = user_data          # identify user and provide security. how exactly? TBD...
         self.data_hash = data_hash
         self.data_url = data_url            # encrypted URL of user's data storage location.
 
-# define a Block
-class Block:
+
+class Block: # define a Block, this is what it's all about
 
     def __init__(self, dictionary):
         for k, v in dictionary.items():
@@ -149,20 +141,18 @@ class Block:
         sha.update(update_input.encode("utf-8"))
         return sha.hexdigest()
 
-class ChainServer(object):
+class ChainServer(object): # provides the means to share the blockchain with clients
     def __init__(self, host, port):
         self.host = host
         self.port = port
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # create socket
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # avoid common errors
         self.sock.bind((self.host, self.port)) # bind the socket
-
         thread = threading.Thread(target=self.listen, args=())
         thread.daemon = False                            # Daemonize thread
         thread.start()                                  # Start the execution
 
-    def listen(self):
-        # listen for incomming chain requests
+    def listen(self): # listen for incomming chain requests
         write_output("CHAINSERVER: PORT# " + str(self.port))
         self.sock.listen(5) # on self.sock
         while True: #
@@ -187,9 +177,7 @@ class ChainServer(object):
             raise ex
             return False
 
-
-
-class StorageNodeMaster(): # controler for storage master node
+class StorageNodeMaster(): # controller for storage master node
     def __init__(self, host, port, minions, chunk_size, replication_factor):
         self.host = host
         self.port = port
@@ -485,7 +473,7 @@ class Client:
                         f.write(data)
                         break
                 else:
-                    print("no chunks found, corrupt file?") # something has messed with data either on the master or perhaps a single source minion
+                    print("no chunks found, corrupt file?") # something has messed with either the master or perhaps a single source minion
                     
 
         write_output("CLIENT: <---    DOWNLOADED FILE: " + newfilename)
@@ -973,6 +961,8 @@ def get_my_ip():
 global localhost
 localhost = get_my_ip()
 local_transactions = [] # store transactions in a list
+
+
 if __name__ == "__main__":
     try:
         global master_address
@@ -991,7 +981,6 @@ if __name__ == "__main__":
         # -----START SERVICES--------------------------------------------------
 
         chainserver = ChainServer(localhost, CHAIN_PORT)
-
 
         if active_master:
             storage_master = StorageNodeMaster(localhost, MASTER_PORT, all_minions, chunk_size, replication_factor)
