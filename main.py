@@ -311,6 +311,15 @@ class StorageNodeMinion():
         thread = threading.Thread(target=self.listen, args=())
         thread.daemon = False                            # Daemonize thread
         thread.start()                                  # Start the execution
+        
+        mining_thread = threading.Thread(target=self.mining, args=())
+        mining_thread.daemon = False                            # Daemonize thread
+        mining_thread.start()
+        
+    def mining(self):
+        while True:
+            if local_transactions:
+                    mine()
 
 
     def listen(self):
