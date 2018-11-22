@@ -49,9 +49,9 @@ DATA_DIR = 'chunkdata' # chunk data directory
 FS_IMAGE = 'fs.img' # chunk file mapping system
 CONFIG_FILE = 'settings.cfg' # local file with settings
 SPLIT = '\n' # used to line break socket streams
-TESTFILE = 'testfile.txt' # file used for uploads & downloads during dev
+TESTFILE = 'testfile.jpg' # file used for uploads & downloads during dev
 RECEIVED_FILE_PREFIX = 'new_' # for demo purposes and so I don't loose orig files if i do something dumb
-PASSPHRASE = "a9c205e8eefc49333a23ade12e92ac5e" # default md5 Passphrase.
+PASSPHRASE = '8A0F8F3B1D0FA8720104C22E8A15CCDF' # default Passphrase er key.
 BLOCK_SIZE = 32 # the block size for the cipher object; must be 16, 24, or 32 for AES
 active_master = False # default to off. control in settings.cfg
 active_minion = False # default to off. control in settings.cfg
@@ -60,14 +60,14 @@ active_client = False # default to off. control in settings.cfg
 file_table = {} # represents the FS_IMAGE while in use. 
 chunk_mapping = {} # maps filenames to their chunks and minion locations
 
-# signal handler to maintain local chunk file system
-def int_handler(signal, frame):
+
+def int_handler(signal, frame): # signal handler to maintain local chunk file system
     global file_table
     global chunk_mapping
     pickle.dump((file_table, chunk_mapping), open(FS_IMAGE, 'wb'))
     sys.exit(0)
 
-def set_configuration():
+def set_configuration(): # load settings from config file
     global active_master
     global active_minion
     global active_miner
@@ -101,18 +101,22 @@ def set_configuration():
     for m in minionslist:
         id, host, port = m.split(':')
         minions[id] = (host, port)
+    blockchain = organise_chain()
+    return blockchain, miner_address, master_address, master_port, minions, chunk_size, replication_factor
+
+def organise_chain():
+    conf = configparser.ConfigParser()
+    conf.readfp(open(CONFIG_FILE))
     foreign_nodes = sync_node_list(conf) # store urls of other nodes in a list
     blockchain = sync_local_chain(foreign_nodes) # create a list of the local blockchain
     blockchain = consensus(blockchain, foreign_nodes) # ensure that our blockchain is the longest
-    return blockchain, miner_address, master_address, master_port, minions, chunk_size, replication_factor
-
+    return blockchain
 
 class Transaction: # define a transaction, which is a record of an uploaded chunk
     def __init__(self, user_data, data_hash, data_url):
         self.user_data = user_data          # identify user and provide security. how exactly? TBD...
         self.data_hash = data_hash
         self.data_url = data_url            # encrypted URL of user's data storage location.
-
 
 class Block: # define a Block, this is what it's all about
 
@@ -135,7 +139,7 @@ class Block: # define a Block, this is what it's all about
         info['hash'] = str(self.hash)
         return info
 
-    def new_hash(self):
+    def new_hash(self): # hash for the new block
         sha = hasher.sha256()
         update_input = str(self.index) + str(self.timestamp) + str(self.user_data) + str(self.data_hash) + str(self.data_url) + str(self.previous_hash) + str(self.proof)
         sha.update(update_input.encode("utf-8"))
@@ -227,8 +231,11 @@ class StorageNodeMaster(): # controller for storage master node
                 threading.Thread(target=self.get_minions, args=(client_socket, client_address, node_ids)).start() # pass connection to a new thread
 
     def master_read(self, client_socket, client_address, filename):
-        print(file_table)
-        mapping = file_table[filename]
+        try:
+            mapping = file_table[filename]
+        except:
+            write_output("MASTER: requested file not found")
+            return
         mapping = pickle.dumps(mapping)
         client_socket.send(mapping)
         msg = client_socket.recv(1096).decode()
@@ -236,13 +243,11 @@ class StorageNodeMaster(): # controller for storage master node
             minions2send = pickle.dumps(self.get_minions())
             client_socket.send(minions2send)
 
-
-
-
     def master_write(self, client_socket, client_address, dest, size):
         
         if self.exists(dest):
-            pass #ignore for now
+            pass #do nothing for now
+        
         file_table[dest] = []
 
         request = client_socket.recv(2048).decode()
@@ -365,8 +370,6 @@ class StorageNodeMinion():
                 add_transaction(miner_address, hashed_data, chunk_uuid) # attach the user dat
                 break
 
-
-
             if incomming[0].startswith("G"): #get request:
                 chunk_uuid = incomming[1]
                 chunk_addr = DATA_DIR + "/" + chunk_uuid
@@ -440,7 +443,7 @@ class Client:
 
         try:
             socket_to_master = socket.socket(socket.AF_INET, socket.SOCK_STREAM)# Create a socket connection.
-            socket_to_master.settimeout(5)
+            socket_to_master.settimeout(1)
             socket_to_master.connect((master_address, master_port))
         except socket.error as er:
             write_output("CLIENT: failed to connect with master")
@@ -459,8 +462,9 @@ class Client:
             minion_list = socket_to_master.recv(4096)
             minion_list = pickle.loads(minion_list)
         except socket.error as er:
-            write_output("CLIENT: lost connection with master")
-            raise er
+            write_output("CLIENT: NETWORK FILE NOT FOUND")
+            return
+            #raise er
 
         
 
@@ -510,6 +514,10 @@ class Client:
             #raise er
 
     def put(self, source):
+        if not (os.path.isfile(source)):
+            write_output(source + " FILE NOT FOUND")
+            return
+            
         timeout = 20
         
         size = os.path.getsize(source)
@@ -576,31 +584,24 @@ class Client:
             timeout = 5
             minion_socket.settimeout(timeout)
             minion_socket.connect((minion_host, int(minion_port)))
-
-            data = encrypter.encrypt(passphrase, data)
+            data = encrypter.encrypt(passphrase, data) # encrypt the data prior to measurement & upload    
             # START META DATA
             msg = "P" + SPLIT + str(chunk_uuid) + SPLIT + str(len(data)) #str(sys.getsizeof(data)) # get sizeof adds 33 extra :(
             msg = msg.encode('utf-8') # string to bytewise
             minion_socket.send(msg)
-
             request = minion_socket.recv(2048).decode()
             if (request == 'get minions'):
                 minions = pickle.dumps(new_minions)
                 minion_socket.send(minions)
-
             request = minion_socket.recv(2048).decode()
             if (request == 'get data'):
-                # START ACTUAL CHUNK DATA
-                
+                # START ACTUAL CHUNK DATA  
                 minion_socket.sendall(data)
-
             request = minion_socket.recv(2048).decode()
             if (request == 'done'):
                 write_output("CLIENT: Sent to minion: " + minion_host)
-
         except socket.error as er:
-            write_output("CLIENT: no contact with minion: " + minion_host)
-            write_output("CLIENT: save likely failed")
+            write_output("CLIENT: no contact with minion - save likely failed: " + minion_host)
             #raise er
 
     def send_to_master(self):
@@ -615,51 +616,47 @@ class Client:
             raise er
 
 
-# Provide Capacity to Encrypt and Decrypt Messages Using AES
-class AESCipher():
 
-    # one-liner to sufficiently pad the text to be encrypted
-    def pad(self, s): 
-        #return s + (BLOCK_SIZE - len(s) % BLOCK_SIZE) * PADDING.encode('utf-8')
+class AESCipher():# Provide Capacity to Encrypt and Decrypt Messages Using AES
+
+    def pad(self, s): # pad the text to be encrypted
         return s + (BLOCK_SIZE - len(s) % BLOCK_SIZE) * (chr(BLOCK_SIZE - len(s) % BLOCK_SIZE).encode('utf-8'))
-   
+    
     def unpad(self, s):
         return s[:-ord(s[len(s)-1:])]
-
-    # encrypt with AES, encode with base64
-    def encrypt(self, key, plaindata):
-        #key = self.pad(key)
+   
+    def encrypt(self, key, plaindata): # encrypt with AES 
+        #key = self.padkey(key)
         cipher = AES.new(key)
-        enc = cipher.encrypt(self.pad(plaindata))#cipher.encrypt(s)#
+        enc = cipher.encrypt(self.pad(plaindata))
         return base64.b64encode(enc)
 
-    def decrypt(self, key, encodeddata): 
-        #key = self.pad(key)
+    def decrypt(self, key, encodeddata):  # decrypt with AES 
+        #key = self.padkey(key)
         cipher = AES.new(key)
         b64 = base64.b64decode(encodeddata)
         return self.unpad(cipher.decrypt(b64))
 
 
-# create a new block to be the first in a new chain.
-# data here will be for the most place symbolic or otherwise meaningless.
-def create_genesis_block():
-    block_data = {}
+
+
+def create_genesis_block(): # create a new block to be the first in a new chain.
+    block_data = {} # data here will be for the most place symbolic or otherwise meaningless.
     block_data['index'] = 0
     block_data['version'] = VERSION
     block_data['timestamp'] = date.datetime.now()
     block_data['previous_hash'] = "0"
     block_data['user_data'] = "none"
     block_data['data_hash'] = "none"
-    block_data["proof"] = '00000048_GENESIS_BLOCKb16e9ac6cb' #use '9' when using pof1, for pof2 use 00000048_GENESIS_BLOCKb16e9ac6cb
+    block_data["proof"] = '00000048_GENESIS_BLOCKb16e9ac6cb' #use '9' when using pof1, for pof2 use 00000048_GENESIS_BLOCKb16e9ac6cb or similar
     block_data['data_url'] = "0"
     first_block = Block(block_data)
     write_output("------NEW CHAIN-----")
     return first_block
 
-def write_output(output):
+def write_output(output): # custom print method, timestamp for screen and log
     stamp = str(date.datetime.now()) + " - " + " - "
     entry = stamp + str(output)
-    #entry = output
     print(entry)
     if os.path.isfile(OUTPUTFNAME):
         with open(OUTPUTFNAME, "a") as f:
@@ -668,7 +665,7 @@ def write_output(output):
         with open(OUTPUTFNAME, "a") as f:
             f.write(entry)
 
-def get_blocks():
+def get_blocks(): # ready local blockchain for transmission
     chain_to_send = blockchain
     for i in range(len(chain_to_send)):
         block = chain_to_send[i]
@@ -708,8 +705,8 @@ def get_blocks():
     chain_to_send = json.dumps(chain_to_send)
     return chain_to_send
 
-# add a new transaction to the list       POST
-def add_transaction(user_data, data_hash, data_url):
+
+def add_transaction(user_data, data_hash, data_url):# add a new transaction to the list       POST
     # get incomming transaction
     # add it to the list
     write_output("New Transaction: " + user_data + " " + data_hash + " " + data_url)
@@ -776,6 +773,7 @@ def mine():
 
         # Get the last mined block
         # Q? what happens if we come across our own transaction? tbd
+        blockchain = organise_chain()
 
         length = len(blockchain)
         #print("last block:" + str(length - 1)) ## correct feeds 6
@@ -788,8 +786,8 @@ def mine():
         last_block_hash = last_block.hash
 
         ### ----- PROOF OF WORK
-        #proof = proof_of_work(last_block.proof) #snakecoin method. gets slower over time. +3 hrs for blocks after 24
-        proof = proof_of_work2(last_block.proof) # tdjsnelling method, in line with common block chains
+        #proof = proof_of_work(last_block.proof) #gets real slow over time. +3 hrs for blocks after 24
+        proof = proof_of_work2(last_block.proof) # tdjsnelling based method, more in line with common block chains
         ### ----- END PROOF OF WORK
 
         block_data = {}
@@ -805,7 +803,7 @@ def mine():
         blockchain.append(new_block)
         save_block(new_block)
 
-def sync_node_list(conf):
+def sync_node_list(conf): # read list of nodes from settings 
     nodes = []
     node_list = conf.get('miner', 'peer_nodes').split(',')
     for n in node_list:
@@ -815,20 +813,18 @@ def sync_node_list(conf):
             nodes.append(node) # then add it to the node list
     return nodes
 
-def get_miner_address(conf):
-
+def get_miner_address(conf): # read miner_address from settings
     miner_address = conf.get('miner', 'miner_address')
     write_output("MINER ADDRESS:" + miner_address) # and advertise known nodes
     return miner_address
 
-def get_master_address(conf):
+def get_master_address(conf): # get the IP address of the master from settings 
     master_address = conf.get('client', 'master_address')
     num, master_address, master_host = master_address.split(':')
     write_output("MASTER ADDRESS:" + master_address) # and advertise known nodes
     return master_address, int(master_host)
 
-def sync_local_chain(foreign_nodes):
-
+def sync_local_chain(foreign_nodes): # read local block JSON files 
     write_output("Syncronizing Blockchain...")
     syncing_blocks = []
     if not os.path.exists(BLOCKCHAIN_DATA_DIR): # is there no local block folder?
@@ -839,8 +835,6 @@ def sync_local_chain(foreign_nodes):
         if os.listdir(BLOCKCHAIN_DATA_DIR) == []: # is it still empty?
             first_block = create_genesis_block() # add a genesis block to the local chain
             save_block(first_block) # save the genesis block locally
-
-
     if os.path.exists(BLOCKCHAIN_DATA_DIR):
         for filename in os.listdir(BLOCKCHAIN_DATA_DIR):
             if filename.endswith('.json'):
@@ -853,28 +847,25 @@ def sync_local_chain(foreign_nodes):
     syncing_blocks.sort(key=lambda x: x.index) # holy crap did this fix a big problem
     return syncing_blocks
 
-
-def save_block(block):
+def save_block(block): # save a block as a local JSON file
     if os.path.exists(BLOCKCHAIN_DATA_DIR):
         filename = '%s/%s.json' % (BLOCKCHAIN_DATA_DIR, block.index)
         with open(filename, 'w') as block_file:
             write_output("NEW BLOCK:: " + str(block.__dict__()))
             json.dump(block.__dict__(), block_file)
 
-def consensus(blockchain, foreign_nodes):
+def consensus(blockchain, foreign_nodes): # Get the blockchain from other nodes
     new_chain = False # initial condition
-    # Get the blocks from other nodes
-    # If our chain isn't longest,
-    # then we store the longest chain
+            # If our chain isn't longest, then we store the longest chain
+            # would also like to check for chains with non-current version numbers
+            # and force the adoption, since the blocks are newer than anything that
+            # could be produced locally. This may be a fringe use case.
+            # unsure as to how to treat them as of yet.
     foreign_chains = findchains(foreign_nodes) # query peers in the list for their chains
     longest_chain = blockchain # set our blockchain as the initial longest
     for chain in foreign_chains: # check the list of foreign chains
         write_output("COMPARE: LOCAL: " + str(len(longest_chain)) + " <VS> REMOTE: " + str(len(chain)))
         if len(longest_chain) < len(chain): #if the incomming chain is longer than the present longest
-            # would also like to check for chains with non-current version numbers
-            # and force the adoption, since the blocks are newer than anything that
-            # could be produced locally. This may be a fringe use case.
-            # unsure as to how to treat them as of yet.
             longest_chain = chain # set it as the longest_chain
             new_chain = True
     blockchain = longest_chain # set the longest list as our new local chain
@@ -969,7 +960,7 @@ if __name__ == "__main__":
         global master_port
 
 
-        passphrase = '8A0F8F3B1D0FA8720104C22E8A15CCDF'
+        passphrase = PASSPHRASE
         encrypter = AESCipher()
         blockchain, miner_address, master_address, master_port, all_minions, chunk_size, replication_factor = set_configuration()
         print ("Hello World")
@@ -994,9 +985,9 @@ if __name__ == "__main__":
 
         if active_client:
             client = Client()
-            time.sleep(3)
+            time.sleep(1)
             client.put(TESTFILE)
-            time.sleep(3)
+            time.sleep(1)
             client.get(TESTFILE)
 
 
