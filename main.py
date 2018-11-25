@@ -311,7 +311,6 @@ class StorageNodeMinion():
         thread = threading.Thread(target=self.listen, args=())
         thread.daemon = False                            # Daemonize thread
         thread.start()                                  # Start the execution
-        
         mining_thread = threading.Thread(target=self.mining, args=())
         mining_thread.daemon = False                            # Daemonize thread
         mining_thread.start()
@@ -319,8 +318,7 @@ class StorageNodeMinion():
     def mining(self):
         while True:
             if local_transactions:
-                    mine()
-
+                mine()
 
     def listen(self):
         # we will receive either a read command or a write command
@@ -456,7 +454,7 @@ class Client:
             socket_to_master.connect((master_address, master_port))
         except socket.error as er:
             write_output("CLIENT: failed to connect with master")
-            raise er
+            #raise er
         
         try:
             msg = "G" + SPLIT + str(fname) # get file by name
@@ -865,11 +863,11 @@ def save_block(block): # save a block as a local JSON file
 
 def consensus(blockchain, foreign_nodes): # Get the blockchain from other nodes
     new_chain = False # initial condition
-            # If our chain isn't longest, then we store the longest chain
-            # would also like to check for chains with non-current version numbers
-            # and force the adoption, since the blocks are newer than anything that
-            # could be produced locally. This may be a fringe use case.
-            # unsure as to how to treat them as of yet.
+        # If our chain isn't longest, then we store the longest chain
+        # would also like to check for chains with non-current version numbers
+        # and force the adoption, since the blocks are newer than anything that
+        # could be produced locally. This may be a fringe use case.
+        # unsure as to how to treat them as of yet.
     foreign_chains = findchains(foreign_nodes) # query peers in the list for their chains
     longest_chain = blockchain # set our blockchain as the initial longest
     for chain in foreign_chains: # check the list of foreign chains
@@ -956,6 +954,58 @@ def get_my_ip():
           for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]]) + ["no IP found"])[0])
     return ip
 
+def promptUser(): ## take input from a prompt
+    global incomming_file
+    go = True
+    while True:
+        command = input("CMD> ") # changed raw_input to input as per python3 changes
+        #print command
+        if len(str(command)) > 0:
+            if (command == "quit" or command == "exit"):		
+                return command
+            if (command.startswith("get")):
+                try:
+                    a, b = command.split(" ")
+                    client.get(b)
+                    return 'done get'
+                except ValueError:
+                    print("bad path")
+                    go = False				
+                if (go):
+                    return command 
+            if (command.startswith("put")):
+                try:
+                    a, b = command.split(" ") 
+                    client.put(b)
+                    return 'done put'   
+                except ValueError:
+                    print("bad path")
+                    go = False
+                if (go):
+                    return command
+                
+            if (command.startswith("sync")):
+                blockchain = organise_chain()
+                
+            if (command.startswith("mine")):
+                mine()
+                
+            if (command.startswith("delete")):
+                try:
+                    a, b = command.split(" ")
+                    print("not yet implemented")
+                    return 'done delete'
+                except ValueError:
+                    print("bad path")
+                    go = False
+
+
+
+            else:
+                return command
+        else:
+            print("String cannot be empty...")
+            continue
 
 # Initial Setup
 global localhost
@@ -994,10 +1044,17 @@ if __name__ == "__main__":
 
         if active_client:
             client = Client()
-            time.sleep(1)
-            client.put(TESTFILE)
-            time.sleep(1)
-            client.get(TESTFILE)
+            #time.sleep(1)
+            #client.put(TESTFILE)
+            #time.sleep(1)
+            #client.get(TESTFILE)
+            active = True
+            while active:
+                command = promptUser()
+                if (command == 'quit' or command == 'exit'):
+                    active = False
+                    
+            
 
 
         # ---------------------------------------------------------------------
