@@ -173,7 +173,6 @@ class ChainServer(object): # provides the means to share the blockchain with cli
                         filepath = '%s/%s' % (BLOCKCHAIN_DATA_DIR, filename) # grab it
                         with open(filepath, 'r') as block_file: # and open it up
                             block_info = json.load(block_file) # load it's data
-                            
                             thing = pickle.dumps(block_info)
                             ok = chain_client_socket.recv(1024)
                             if(ok):
@@ -962,7 +961,7 @@ def findchains(foreign_nodes):
             except socket.timeout as ex:
                 write_output("NA:" + str(peer_address) + " : " + str(peer_port))
                 #raise ex
-            except as ex:
+            except Exception as ex:
                 write_output("ERR:" + str(peer_address) + " : " + str(peer_port))
                 raise ex
 
