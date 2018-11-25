@@ -459,6 +459,8 @@ class Client:
     def get(self, fname):
         global master_address
         global master_port
+        overwrite = False
+        write_error = False
 
         try:
             socket_to_master = socket.socket(socket.AF_INET, socket.SOCK_STREAM)# Create a socket connection.
@@ -490,7 +492,10 @@ class Client:
             while ask:
                 choice = input("File Exists... Overwrite? y/n:")
                 if (choice == "y" or choice == "yes" or choice =="Y"):
+                    overwrite = True
                     newfilename = fname
+                    with open(newfilename, "rb") as temp: # temp backup in case of error
+                        temp_backup = temp.read()
                     ask = False
                 elif (choice == 'n' or choice == "no" or choice == "N"):
                     newfilename = fname + RECEIVED_FILE_SUFFIX   
@@ -500,9 +505,6 @@ class Client:
         else: 
             newfilename = fname
 
-        
-        
-        
         with open(newfilename, "wb") as f:
             for chunk in table:
                 for m in [minion_list[_] for _ in chunk[1]]:
@@ -512,9 +514,16 @@ class Client:
                         break
                 else:
                     print("no chunks found, corrupt file?") # something has messed with either the master or perhaps a single source minion
+                    write_error = True
                     
-
-        write_output("CLIENT: <---    DOWNLOADED FILE: " + newfilename)
+        if (write_error):
+            write_output("CLIENT: <---    DOWNLOAD FAIL: " + newfilename)
+            if (overwrite):
+                write_output("CLIENT: restoring file: " + newfilename)
+                with open(newfilename, "wb") as f:
+                    f.write(temp_backup) # restore the original as it was before download error
+        else:
+            write_output("CLIENT: <---    DOWNLOADED FILE: " + newfilename)
 
     def read_from_minion(self, chunk_uuid, minion):
         host, port = minion
@@ -545,7 +554,7 @@ class Client:
 
         except socket.error as er:
             write_output("CLIENT: failed to read from minion" + host)
-            #raise er
+            return 
 
     def put(self, source):
         if not (os.path.isfile(source)):
@@ -1026,6 +1035,7 @@ def promptUser(): ## take input from a prompt
                     return command
                 
             if (command.startswith("sync")):
+                
                 blockchain = organise_chain()
                 
             if (command.startswith("mine")):
@@ -1058,6 +1068,7 @@ if __name__ == "__main__":
     try:
         global master_address
         global master_port
+        
 
 
         passphrase = PASSPHRASE
