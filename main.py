@@ -919,6 +919,7 @@ def consensus(blockchain, foreign_nodes): # Get the blockchain from other nodes
     return blockchain
 
 def findchains(foreign_nodes):
+    
     timeout = 2
     global localhost
     list_of_chains = []# query other listed nodes in the network for copies of their blockchains
@@ -931,7 +932,8 @@ def findchains(foreign_nodes):
                 s.settimeout(timeout)
                 s.connect((peer_address, peer_port))
                 this_chain = []
-                while True:
+                getting_blocks = True
+                while getting_blocks:
                     msg = "go".encode('utf-8')
                     s.send(msg)
                     incomming = s.recv(1024) # determine a decent byte size.
@@ -941,9 +943,10 @@ def findchains(foreign_nodes):
                         break
                     try:
                         if incomming.decode() == "done":
+                            getting_blocks = False
                             break
                     except: 
-                        continue
+                        pass
                     # determine break point between objects
                     # currently the server is just time.sleep(0.05) between breaks
                     
