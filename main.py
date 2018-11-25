@@ -51,6 +51,7 @@ CONFIG_FILE = 'settings.cfg' # local file with settings
 SPLIT = '\n' # used to line break socket streams
 TESTFILE = 'testfile.jpg' # file used for uploads & downloads during dev
 RECEIVED_FILE_PREFIX = 'new_' # for demo purposes and so I don't loose orig files if i do something dumb
+RECEIVED_FILE_SUFFIX = '_new'
 PASSPHRASE = '8A0F8F3B1D0FA8720104C22E8A15CCDF' # default Passphrase er key.
 BLOCK_SIZE = 32 # the block size for the cipher object; must be 16, 24, or 32 for AES
 active_master = False # default to off. control in settings.cfg
@@ -164,6 +165,7 @@ class ChainServer(object): # provides the means to share the blockchain with cli
             threading.Thread(target=self.serve_chain, args=(chain_client_socket, chain_client_address)).start() # pass connection to a new thread
 
     def serve_chain(self, chain_client_socket, chain_client_address): # incomming connection request
+        chain_client_socket.timeout(5)
         try: # get our local chain of blocks
             if os.path.exists(BLOCKCHAIN_DATA_DIR): # assuming the folder exists...
                 for filename in os.listdir(BLOCKCHAIN_DATA_DIR): # for every file...
@@ -171,13 +173,17 @@ class ChainServer(object): # provides the means to share the blockchain with cli
                         filepath = '%s/%s' % (BLOCKCHAIN_DATA_DIR, filename) # grab it
                         with open(filepath, 'r') as block_file: # and open it up
                             block_info = json.load(block_file) # load it's data
-                            chain_client_socket.send(pickle.dumps(block_info)) # package and send it
-                            time.sleep(0.05) # this is risky but effective in spliting the byte stream
+                            chain_client_socket.send(pickle.dumps(block_info)) # package and send it, * windows has trouble with pickle perhaps??
+                            
+                            ok = chain_client_socket.recv(1024)
+                            if(ok):
+                                continue
+                            #time.sleep(0.15) # this is risky but effective in spliting the byte stream
             chain_client_socket.close()
             write_output("CHAINSERVER: Chain Transmitted to: " + str(chain_client_address))
         except Exception as ex:
             chain_client_socket.close()
-            write_output("CHAINSERVER: Transmission Error") # hopeful doesn't happen. FIX later to avoid catch all
+            write_output("CHAINSERVER: Transmission Error") # hopeful doesn't happen. 
             raise ex
             return False
 
@@ -473,9 +479,24 @@ class Client:
             return
             #raise er
 
-        
+        if (os.path.isfile(fname)):
+            ask = True
+            while ask:
+                choice = input("File Exists... Overwrite? y/n:")
+                if (choice == "y" or choice == "yes" or choice =="Y"):
+                    newfilename = fname
+                    ask = False
+                elif (choice == 'n' or choice == "no" or choice == "N"):
+                    newfilename = fname + RECEIVED_FILE_SUFFIX   
+                    ask = False
+                else:
+                    print("y/n")
+        else: 
+            newfilename = fname
 
-        newfilename = RECEIVED_FILE_PREFIX + fname
+        
+        
+        
         with open(newfilename, "wb") as f:
             for chunk in table:
                 for m in [minion_list[_] for _ in chunk[1]]:
@@ -912,7 +933,8 @@ def findchains(foreign_nodes):
                         break
                     # determine break point between objects
                     # currently the server is just time.sleep(0.05) between breaks
-                    dict = pickle.loads(incomming) # create a dictionary from the stream data # ** OCCASIONAL ERROR: _pickle.UnpicklingError: invalid load key, '5'
+                    
+                    dict = pickle.loads(incomming) # create a dictionary from the stream data # ** blocks coming in too fast? or OCCASIONAL WINDOWS ERROR: _pickle.UnpicklingError: invalid load key, '5'
                     block_object = Block(dict) # use the dictionary to create a block object
                     # ____________________________________________________________________________________
                     # check for obsolete blocks in the incomming chain
@@ -927,6 +949,7 @@ def findchains(foreign_nodes):
 
                         write_output("!OBSOLETE INCOMMING BLOCK - DISCARDED!")
                     # ____________________________________________________________________________________
+                    s.send("ok")
 
                 s.close()
                 write_output("Obtained Chain from Remote " + str(peer_address) + " : " + str(peer_port))
@@ -935,8 +958,9 @@ def findchains(foreign_nodes):
             except socket.timeout as ex:
                 write_output("NA:" + str(peer_address) + " : " + str(peer_port))
                 #raise ex
-            except socket.error as ex:
+            except:
                 write_output("ERR:" + str(peer_address) + " : " + str(peer_port))
+
     return list_of_chains
 
 
@@ -1026,11 +1050,13 @@ if __name__ == "__main__":
         print ("(p)ut  (g)et  (m)ine  e(x)it")
         #1/0 #test exception log
 
-        write_output("start tests...")
+        
         time.sleep(0.1)
         # -----START SERVICES--------------------------------------------------
 
         chainserver = ChainServer(localhost, CHAIN_PORT)
+        
+        
 
         if active_master:
             storage_master = StorageNodeMaster(localhost, MASTER_PORT, all_minions, chunk_size, replication_factor)
@@ -1087,7 +1113,7 @@ if __name__ == "__main__":
 
     except BaseException as e:
         logging.error(e, exc_info=True) # ensure exceptions and such things are logged for prosperity
-        raise e # but still crash the program naturally
+        raise e # but still raise the exception naturally
 
     write_output("PROGRAM COMPLETE, SERVING UNTIL MANUAL ABORT...") # final command
     sys.exit()
