@@ -165,7 +165,7 @@ class ChainServer(object): # provides the means to share the blockchain with cli
             threading.Thread(target=self.serve_chain, args=(chain_client_socket, chain_client_address)).start() # pass connection to a new thread
 
     def serve_chain(self, chain_client_socket, chain_client_address): # incomming connection request
-        chain_client_socket.settimeout(5)
+        chain_client_socket.settimeout(2)
         try: # get our local chain of blocks
             if os.path.exists(BLOCKCHAIN_DATA_DIR): # assuming the folder exists...
                 for filename in os.listdir(BLOCKCHAIN_DATA_DIR): # for every file...
@@ -1052,12 +1052,12 @@ if __name__ == "__main__":
         #1/0 #test exception log
 
         
-        time.sleep(0.1)
+        time.sleep(0.5)
         # -----START SERVICES--------------------------------------------------
 
         chainserver = ChainServer(localhost, CHAIN_PORT)
         
-        
+        time.sleep(0.5)
 
         if active_master:
             storage_master = StorageNodeMaster(localhost, MASTER_PORT, all_minions, chunk_size, replication_factor)
