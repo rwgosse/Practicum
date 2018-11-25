@@ -961,7 +961,7 @@ def findchains(foreign_nodes):
             except socket.timeout as ex:
                 write_output("NA:" + str(peer_address) + " : " + str(peer_port))
                 #raise ex
-            except Exception as ex:
+            except socket.error as ex:
                 write_output("ERR:" + str(peer_address) + " : " + str(peer_port))
                 raise ex
 
