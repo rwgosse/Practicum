@@ -929,7 +929,8 @@ def findchains(foreign_nodes):
                 s.connect((peer_address, peer_port))
                 this_chain = []
                 while True:
-                    s.send('go'.encode('utf-8'))
+                    msg = 'go'.encode('utf-8')
+                    s.send(msg)
                     incomming = s.recv(1024) # determine a decent byte size.
                     # 4096 is pretty big considering our json files are ~397, genesis being 254
                     # 1024 seems reliable
@@ -1056,7 +1057,7 @@ if __name__ == "__main__":
         #1/0 #test exception log
 
         
-        time.sleep(0.5)
+        
         # -----START SERVICES--------------------------------------------------
 
         chainserver = ChainServer(localhost, CHAIN_PORT)
