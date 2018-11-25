@@ -182,7 +182,9 @@ class ChainServer(object): # provides the means to share the blockchain with cli
                             
                             
                             
-                            
+                msg = "done".encode('utf-8')            
+                chain_client_socket.send(msg)
+                
                 chain_client_socket.close()
                 write_output("CHAINSERVER: Chain Transmitted to: " + str(chain_client_address))
         except Exception as ex:
@@ -937,6 +939,11 @@ def findchains(foreign_nodes):
                     # 1024 seems reliable
                     if not incomming:
                         break
+                    try:
+                        if incomming.decode() == "done":
+                            break
+                    except: 
+                        continue
                     # determine break point between objects
                     # currently the server is just time.sleep(0.05) between breaks
                     
