@@ -932,9 +932,11 @@ def consensus(blockchain, foreign_nodes): # Get the blockchain from other nodes
                     block_info = json.load(existing_block_file)
                     existing_block_object = Block(block_info)
                     if (existing_block_object.hash == block.hash):
-                        write_output("block " + str(block.index) + " already exists - abort write")
+                        #write_output("block " + str(block.index) + " already exists - abort write")
+                        pass
                     else:
                         filename = '%s/%s%s.json' % (BLOCKCHAIN_DATA_DIR, block.index, ORPHAN_TAG)
+                        block.index = str(block.index) + ORPHAN_TAG # the oliver twist
                         with open(filename, 'w') as block_file:
                             write_output("ABOPTING ORPHAN BLOCK:: " + str(block.__dict__()))
                             json.dump(block.__dict__(), block_file)
