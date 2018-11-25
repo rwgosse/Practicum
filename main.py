@@ -169,22 +169,20 @@ class ChainServer(object): # provides the means to share the blockchain with cli
         try: # get our local chain of blocks
             if os.path.exists(BLOCKCHAIN_DATA_DIR): # assuming the folder exists...
                 for filename in os.listdir(BLOCKCHAIN_DATA_DIR): # for every file...
+                    time.sleep(0.25)
                     if filename.endswith('.json'): # and if it's a json file
                         filepath = '%s/%s' % (BLOCKCHAIN_DATA_DIR, filename) # grab it
                         with open(filepath, 'r') as block_file: # and open it up
                             block_info = json.load(block_file) # load it's data
                             thing = pickle.dumps(block_info)
-                            ok = chain_client_socket.recv(1024)
-                            if(ok):
-                                continue
                             chain_client_socket.send(thing) # package and send it, * windows has trouble with pickle perhaps??
                             
                             
                             
-            chain_client_socket.close()
-            write_output("CHAINSERVER: Chain Transmitted to: " + str(chain_client_address))
+                chain_client_socket.close()
+                write_output("CHAINSERVER: Chain Transmitted to: " + str(chain_client_address))
         except Exception as ex:
-            chain_client_socket.close()
+            #chain_client_socket.close()
             write_output("CHAINSERVER: Transmission Error") # hopeful doesn't happen. 
             raise ex
             return False
@@ -928,7 +926,6 @@ def findchains(foreign_nodes):
                 s.connect((peer_address, peer_port))
                 this_chain = []
                 while True:
-                    s.send("ok")
                     incomming = s.recv(1024) # determine a decent byte size.
                     # 4096 is pretty big considering our json files are ~397, genesis being 254
                     # 1024 seems reliable
