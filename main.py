@@ -179,10 +179,10 @@ class ChainServer(object): # provides the means to share the blockchain with cli
                             if(ok):
                                 continue
                             #time.sleep(0.15) # this is risky but effective in spliting the byte stream
-            chain_client_socket.close()
+            #chain_client_socket.close()
             write_output("CHAINSERVER: Chain Transmitted to: " + str(chain_client_address))
         except Exception as ex:
-            chain_client_socket.close()
+            #chain_client_socket.close()
             write_output("CHAINSERVER: Transmission Error") # hopeful doesn't happen. 
             raise ex
             return False
