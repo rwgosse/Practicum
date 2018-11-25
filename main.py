@@ -175,6 +175,9 @@ class ChainServer(object): # provides the means to share the blockchain with cli
                         with open(filepath, 'r') as block_file: # and open it up
                             block_info = json.load(block_file) # load it's data
                             thing = pickle.dumps(block_info)
+                            go = chain_client_socket.recv(1024)
+                            if(go):
+                                continue
                             chain_client_socket.send(thing) # package and send it, * windows has trouble with pickle perhaps??
                             
                             
@@ -926,6 +929,7 @@ def findchains(foreign_nodes):
                 s.connect((peer_address, peer_port))
                 this_chain = []
                 while True:
+                    s.send('go')
                     incomming = s.recv(1024) # determine a decent byte size.
                     # 4096 is pretty big considering our json files are ~397, genesis being 254
                     # 1024 seems reliable
@@ -960,7 +964,7 @@ def findchains(foreign_nodes):
                 #raise ex
             except socket.error as ex:
                 write_output("ERR:" + str(peer_address) + " : " + str(peer_port))
-                raise ex
+                #raise ex # raising ex here will crash the program
 
     return list_of_chains
 
