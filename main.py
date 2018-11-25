@@ -173,16 +173,19 @@ class ChainServer(object): # provides the means to share the blockchain with cli
                         filepath = '%s/%s' % (BLOCKCHAIN_DATA_DIR, filename) # grab it
                         with open(filepath, 'r') as block_file: # and open it up
                             block_info = json.load(block_file) # load it's data
-                            chain_client_socket.send(pickle.dumps(block_info)) # package and send it, * windows has trouble with pickle perhaps??
                             
+                            thing = pickle.dumps(block_info)
                             ok = chain_client_socket.recv(1024)
                             if(ok):
                                 continue
-                            #time.sleep(0.15) # this is risky but effective in spliting the byte stream
-            #chain_client_socket.close()
+                            chain_client_socket.send(thing) # package and send it, * windows has trouble with pickle perhaps??
+                            
+                            
+                            
+            chain_client_socket.close()
             write_output("CHAINSERVER: Chain Transmitted to: " + str(chain_client_address))
         except Exception as ex:
-            #chain_client_socket.close()
+            chain_client_socket.close()
             write_output("CHAINSERVER: Transmission Error") # hopeful doesn't happen. 
             raise ex
             return False
@@ -926,6 +929,7 @@ def findchains(foreign_nodes):
                 s.connect((peer_address, peer_port))
                 this_chain = []
                 while True:
+                    s.send("ok")
                     incomming = s.recv(1024) # determine a decent byte size.
                     # 4096 is pretty big considering our json files are ~397, genesis being 254
                     # 1024 seems reliable
@@ -949,7 +953,7 @@ def findchains(foreign_nodes):
 
                         write_output("!OBSOLETE INCOMMING BLOCK - DISCARDED!")
                     # ____________________________________________________________________________________
-                    s.send("ok")
+                    
 
                 s.close()
                 write_output("Obtained Chain from Remote " + str(peer_address) + " : " + str(peer_port))
@@ -958,8 +962,9 @@ def findchains(foreign_nodes):
             except socket.timeout as ex:
                 write_output("NA:" + str(peer_address) + " : " + str(peer_port))
                 #raise ex
-            except:
+            except as ex:
                 write_output("ERR:" + str(peer_address) + " : " + str(peer_port))
+                raise ex
 
     return list_of_chains
 
