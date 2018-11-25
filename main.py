@@ -54,6 +54,8 @@ RECEIVED_FILE_PREFIX = 'new_' # for demo purposes and so I don't loose orig file
 RECEIVED_FILE_SUFFIX = '_new'
 PASSPHRASE = '8A0F8F3B1D0FA8720104C22E8A15CCDF' # default Passphrase er key.
 BLOCK_SIZE = 32 # the block size for the cipher object; must be 16, 24, or 32 for AES
+ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+ORPHAN_TAG = "B"
 active_master = False # default to off. control in settings.cfg
 active_minion = False # default to off. control in settings.cfg
 active_miner = False # default to off. control in settings.cfg
@@ -170,15 +172,16 @@ class ChainServer(object): # provides the means to share the blockchain with cli
             if os.path.exists(BLOCKCHAIN_DATA_DIR): # assuming the folder exists...
                 for filename in os.listdir(BLOCKCHAIN_DATA_DIR): # for every file...
                     #time.sleep(0.25)
-                    if filename.endswith('.json'): # and if it's a json file
-                        filepath = '%s/%s' % (BLOCKCHAIN_DATA_DIR, filename) # grab it
-                        with open(filepath, 'r') as block_file: # and open it up
-                            block_info = json.load(block_file) # load it's data
-                            thing = pickle.dumps(block_info)
-                            go = chain_client_socket.recv(1024).decode()
-                            if(go == "go"):
-                                time.sleep(0.05)
-                                chain_client_socket.send(thing) # package and send it, * windows has trouble with pickle perhaps??
+                    if not filename.endswith(ORPHAN_TAG + '.json'):
+                        if filename.endswith('.json'): # and if it's a json file
+                            filepath = '%s/%s' % (BLOCKCHAIN_DATA_DIR, filename) # grab it
+                            with open(filepath, 'r') as block_file: # and open it up
+                                block_info = json.load(block_file) # load it's data
+                                thing = pickle.dumps(block_info)
+                                go = chain_client_socket.recv(1024).decode()
+                                if(go == "go"):
+                                    time.sleep(0.05)
+                                    chain_client_socket.send(thing) # package and send it, * windows has trouble with pickle perhaps??
                             
                             
                             
@@ -880,13 +883,14 @@ def sync_local_chain(foreign_nodes): # read local block JSON files
             save_block(first_block) # save the genesis block locally
     if os.path.exists(BLOCKCHAIN_DATA_DIR):
         for filename in os.listdir(BLOCKCHAIN_DATA_DIR):
-            if filename.endswith('.json'):
-                filepath = '%s/%s' % (BLOCKCHAIN_DATA_DIR, filename)
-                with open(filepath, 'r') as block_file:
-                    block_info = json.load(block_file)
-                    block_object = Block(block_info) # umm maybe need dict?
-                    #print("SYNC:BLOCK:" + str(block_object.index))
-                    syncing_blocks.append(block_object)
+            if not filename.endswith(ORPHAN_TAG + '.json'): # no forwarding of orphans, what of a boy who asked for more
+                if filename.endswith('.json'):
+                    filepath = '%s/%s' % (BLOCKCHAIN_DATA_DIR, filename)
+                    with open(filepath, 'r') as block_file:
+                        block_info = json.load(block_file)
+                        block_object = Block(block_info) # umm maybe need dict?
+                        #print("SYNC:BLOCK:" + str(block_object.index))
+                        syncing_blocks.append(block_object)
     syncing_blocks.sort(key=lambda x: x.index) # holy crap did this fix a big problem
     return syncing_blocks
 
@@ -924,7 +928,17 @@ def consensus(blockchain, foreign_nodes): # Get the blockchain from other nodes
             else:
                 # existing block json should be handled here
                 # they shouldn't be overwritten but tagged somehow to show orphaned status
-                write_output("block " + str(block.index) + " already exists - abort write") # consider intregrity checks
+                with open(filename, 'r') as existing_block_file:
+                    block_info = json.load(existing_block_file)
+                    existing_block_object = Block(block_info)
+                    if (existing_block_object.hash == block.hash):
+                        write_output("block " + str(block.index) + " already exists - abort write")
+                    else:
+                        filename = '%s/%s%s.json' % (BLOCKCHAIN_DATA_DIR, block.index, ORPHAN_TAG)
+                        with open(filename, 'w') as block_file:
+                            write_output("ABOPTING ORPHAN BLOCK:: " + str(block.__dict__()))
+                            json.dump(block.__dict__(), block_file)
+
     return blockchain
 
 def findchains(foreign_nodes):
