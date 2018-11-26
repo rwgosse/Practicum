@@ -178,10 +178,9 @@ class ChainServer(object): # provides the means to share the blockchain with cli
                 msg = "done".encode('utf-8')            
                 chain_client_socket.send(msg)
                 chain_client_socket.close()
-                write_output("CHAINSERVER: Chain Transmitted to: " + str(chain_client_address))
+                #write_output("CHAINSERVER: Chain Transmitted to: " + str(chain_client_address))
         except Exception as ex:
-            write_output("CHAINSERVER: Transmission Error") # hopeful doesn't happen. 
-            raise ex
+            #write_output("CHAINSERVER: Transmission Error") # hopeful doesn't happen. 
             return False
 
 class StorageNodeMaster(): # controller for storage master node
@@ -900,7 +899,7 @@ def findchains(foreign_nodes):
                         write_output("!OBSOLETE INCOMMING BLOCK - DISCARDED!")
                     # ____________________________________________________________________________________
                 s.close()
-                write_output("Obtained Chain from Remote " + str(peer_address) + " : " + str(peer_port))
+                #write_output("Obtained Chain from Remote " + str(peer_address) + " : " + str(peer_port))
                 list_of_chains.append(this_chain) # add incomming chain to the list of chain
             except socket.timeout as ex:
                 #write_output("NA:" + str(peer_address) + " : " + str(peer_port))
