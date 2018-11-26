@@ -217,17 +217,20 @@ class StorageNodeMaster(): # controller for storage master node
                 write_output("MASTER: incomming put request" + str(client_address))
                 dest = incomming[1]
                 size = incomming[2]
-                threading.Thread(target=self.master_write, args=(client_socket, client_address, dest, size)).start() # pass connection to a new thread
+                user = incomming[3]
+                threading.Thread(target=self.master_write, args=(client_socket, client_address, dest, size, user)).start() # pass connection to a new thread
             if incomming[0].startswith("G"): #get request:
                 write_output("MASTER: incomming get request" + str(client_address))
                 fname = incomming[1]
-                threading.Thread(target=self.master_read, args=(client_socket, client_address, fname)).start() # pass connection to a new thread
+                user = incomming[2]
+                threading.Thread(target=self.master_read, args=(client_socket, client_address, fname, user)).start() # pass connection to a new thread
             if incomming[0].startswith("M"): #map request:
                 write_output("MASTER: incomming map request" + str(client_address))
                 #node_ids = incomming[1]
                 threading.Thread(target=self.get_minions, args=(client_socket, client_address, node_ids)).start() # pass connection to a new thread
 
-    def master_read(self, client_socket, client_address, filename):
+    def master_read(self, client_socket, client_address, filename, user):
+        filename = filename + '_' + user
         try:
             mapping = file_table[filename]
         except:
@@ -240,7 +243,8 @@ class StorageNodeMaster(): # controller for storage master node
             minions2send = pickle.dumps(self.get_minions())
             client_socket.send(minions2send)
 
-    def master_write(self, client_socket, client_address, dest, size):
+    def master_write(self, client_socket, client_address, dest, size, user):
+        dest = dest + '_' + user
         if self.exists(dest):
             pass #do nothing for now, just overwrite
         file_table[dest] = []
@@ -260,7 +264,8 @@ class StorageNodeMaster(): # controller for storage master node
             nodes_ids = pickle.dumps(nodes_ids)
             client_socket.send(nodes_ids)
 
-    def get_file_table_entry(self, fname):
+    def get_file_table_entry(self, fname, user):
+        fname = fname + '_' + user
         if fname in file_table:
             return file_table[fname]
         else:
@@ -275,10 +280,12 @@ class StorageNodeMaster(): # controller for storage master node
     def calculate_number_of_chunks(self, size):
         return int(math.ceil(float(size) / self.chunk_size))
 
-    def exists(self, file):
+    def exists(self, file, user):
+        file = file + '_' + user
         return file in file_table
 
-    def allocate_chunks(self, dest, num):
+    def allocate_chunks(self, dest, num, user):
+        dest = dest + '_' + user
         chunks = []
         for i in range(0, num):
             chunk_uuid = uuid.uuid1()
@@ -434,7 +441,7 @@ class Client:
         except socket.error as er:
             write_output("CLIENT: failed to connect with master")
         try:
-            msg = "G" + SPLIT + str(fname) # get file by name
+            msg = "G" + SPLIT + str(fname) + SPLIT + str(miner_address) # get file by name
             msg = msg.encode('utf-8') # string to bytewise
             socket_to_master.send(msg)
             table = socket_to_master.recv(4096)
@@ -535,7 +542,7 @@ class Client:
             socket_to_master = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             socket_to_master.settimeout(2)
             socket_to_master.connect((master_address, master_port))
-            msg = "P" + SPLIT + str(dest) + SPLIT + str(size) # squish the destination and file size together
+            msg = "P" + SPLIT + str(dest) + SPLIT + str(size) + SPLIT + str(miner_address) # squish the destination and file size together
             msg = msg.encode('utf-8') # string to bytewise
             socket_to_master.send(msg)
             time.sleep(0.1)
