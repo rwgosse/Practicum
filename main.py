@@ -264,8 +264,7 @@ class StorageNodeMaster(): # controller for storage master node
             nodes_ids = pickle.dumps(nodes_ids)
             client_socket.send(nodes_ids)
 
-    def get_file_table_entry(self, fname, user):
-        fname = fname + '_' + user
+    def get_file_table_entry(self, fname):
         if fname in file_table:
             return file_table[fname]
         else:
@@ -280,8 +279,7 @@ class StorageNodeMaster(): # controller for storage master node
     def calculate_number_of_chunks(self, size):
         return int(math.ceil(float(size) / self.chunk_size))
 
-    def exists(self, file, user):
-        file = file + '_' + user
+    def exists(self, file):
         return file in file_table
 
     def allocate_chunks(self, dest, num, user):
