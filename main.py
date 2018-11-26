@@ -282,8 +282,7 @@ class StorageNodeMaster(): # controller for storage master node
     def exists(self, file):
         return file in file_table
 
-    def allocate_chunks(self, dest, num, user):
-        dest = dest + '_' + user
+    def allocate_chunks(self, dest, num):
         chunks = []
         for i in range(0, num):
             chunk_uuid = uuid.uuid1()
