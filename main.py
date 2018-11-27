@@ -620,13 +620,13 @@ class AESCipher():# Provide Capacity to Encrypt and Decrypt Messages Using AES
    
     def encrypt(self, key, plaindata): # encrypt with AES 
         #key = self.padkey(key)
-        cipher = AES.new(key)
+        cipher = AES.new(key, AES.MODE_EAX)
         enc = cipher.encrypt(self.pad(plaindata))
         return base64.b64encode(enc)
 
     def decrypt(self, key, encodeddata):  # decrypt with AES 
         #key = self.padkey(key)
-        cipher = AES.new(key)
+        cipher = AES.new(key, AES.MODE_EAX)
         b64 = base64.b64decode(encodeddata)
         return self.unpad(cipher.decrypt(b64))
 
