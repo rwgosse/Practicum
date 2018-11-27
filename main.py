@@ -277,7 +277,8 @@ class StorageNodeMaster(): # controller for storage master node
         return self.minions
 
     def calculate_number_of_chunks(self, size):
-        return int(math.ceil(float(size) / self.chunk_size))
+        #return int(math.ceil(float(size) / self.chunk_size))
+        return 5 # checking, big files generate too many chunks, duh
 
     def exists(self, file):
         return file in file_table
