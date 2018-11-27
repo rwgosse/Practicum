@@ -557,9 +557,10 @@ class Client:
             # problem develops if there are not enough minions to carry the whole file - nov 7th
             if (chunks):
                 write_output("CLIENT: # of chunks:" + str(len(chunks)))
+                read_chunk_size = int(math.ceil(float(size) / len(chunks))) # correct for chunk_size error
                 with open(source, "rb") as f:
-                    for c in chunks:  # c[0] contains the uuid, c[1] contains the minion? no
-                        data = f.read(chunk_size)
+                    for c in chunks:  # c[0] contains the uuid, c[1] contains the specific minion
+                        data = f.read(read_chunk_size) # using the fixed length variable chunk_size here was a mistake
                         chunk_uuid = c[0]
                         new_minions = [temp_minions[_] for _ in c[1]]
                         write_output("CLIENT: CHUNK: " + chunk_uuid)
