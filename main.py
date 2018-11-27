@@ -498,7 +498,7 @@ class Client:
             msg = "G" + SPLIT + chunk_uuid # get minions from the master
             msg = msg.encode('utf-8') # string to bytewise
             socket_to_minion.send(msg)
-            chunksize = socket_to_minion.recv(32).decode()
+            chunksize = socket_to_minion.recv(1024).decode()
             msg = "go"
             msg = msg.encode('utf-8') # string to bytewise
             socket_to_minion.send(msg)
