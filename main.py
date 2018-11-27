@@ -328,6 +328,8 @@ class StorageNodeMinion():
 
     def incoming(self, storage_client_socket, storage_client_address):
         incomming = ''
+        timeout = 20
+        storage_client_socket.settimeout(timeout)
         while True:
             incomming = (storage_client_socket.recv(2048).decode())
             if not incomming:
@@ -338,6 +340,7 @@ class StorageNodeMinion():
                 # RECEIVE META
                 chunk_uuid = incomming[1]
                 chunksize = int(incomming[2])
+                print('minion expecting:' + str(chunksize))
                 # RECEIVE MINIONS
                 storage_client_socket.send(('get minions').encode('utf-8'))
                 incomming_minions = storage_client_socket.recv(4096)
@@ -349,7 +352,8 @@ class StorageNodeMinion():
                 while rec:
                     stream = storage_client_socket.recv(1024)
                     data += stream
-                    if (chunksize == len(data)):
+                    print('so far...:' + len(data))
+                    if (len(data) == chunksize):
                         rec = False
                 # WRITE THE CHUNK TO STORAGE
                 chunkpath = '%s/%s' % (DATA_DIR, chunk_uuid)
@@ -568,6 +572,7 @@ class Client:
             write_output("CLIENT: --->   UPLOADED FILE: " + source)
         except socket.error as er:
             write_output("CLIENT: failed to connect with master")
+            raise er
 
     def send_to_minion(self, chunk_uuid, data, new_minions):
         minion = new_minions[0]
@@ -589,13 +594,17 @@ class Client:
                 minion_socket.send(minions)
             request = minion_socket.recv(2048).decode()
             if (request == 'get data'):
-                # START ACTUAL CHUNK DATA  
+                # START ACTUAL CHUNK DATA
+                timeout = 20
+                minion_socket.settimeout(timeout)
                 minion_socket.sendall(data)
+            
             request = minion_socket.recv(2048).decode()
             if (request == 'done'):
                 write_output("CLIENT: Sent to minion: " + minion_host)
         except socket.error as er:
             write_output("CLIENT: no contact with minion - save likely failed: " + minion_host)
+            raise er
 
 class AESCipher():# Provide Capacity to Encrypt and Decrypt Messages Using AES
 
