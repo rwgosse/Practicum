@@ -373,8 +373,9 @@ class StorageNodeMinion():
                 chunk_addr = DATA_DIR + "/" + chunk_uuid
                 if not os.path.isfile(chunk_addr):
                     chunk = None
-                with open(chunk_addr, 'rb') as f:
-                    chunk = f.read()
+                else:    
+                    with open(chunk_addr, 'rb') as f:
+                        chunk = f.read()    
                 chunk = pickle.dumps(chunk)
                 chunksize = len(chunk)
                 chunksize = str(chunksize)
