@@ -595,9 +595,13 @@ class Client:
             request = minion_socket.recv(2048).decode()
             if (request == 'get data'):
                 # START ACTUAL CHUNK DATA
-                timeout = 20
-                minion_socket.settimeout(timeout)
+                minion_socket.settimeout(None) # Enter Blocking Mode
+                # Changed in version 3.5: The socket timeout is no more reset 
+                # each time data is sent successfully. 
+                # The socket timeout is now the maximum total duration to send all data.
+                # which is bad for large files
                 minion_socket.sendall(data)
+                minion_socket.settimeout(timeout) # Exit Blocking Mode
             
             request = minion_socket.recv(2048).decode()
             if (request == 'done'):
