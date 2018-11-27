@@ -352,7 +352,7 @@ class StorageNodeMinion():
                 while rec:
                     stream = storage_client_socket.recv(1024)
                     data += stream
-                    print('so far...:' + len(data))
+                    print('so far...:' + str(len(data)))
                     if (len(data) == chunksize):
                         rec = False
                 # WRITE THE CHUNK TO STORAGE
