@@ -340,7 +340,7 @@ class StorageNodeMinion():
                 # RECEIVE META
                 chunk_uuid = incomming[1]
                 chunksize = int(incomming[2])
-                print('minion expecting:' + str(chunksize))
+                
                 # RECEIVE MINIONS
                 storage_client_socket.send(('get minions').encode('utf-8'))
                 incomming_minions = storage_client_socket.recv(4096)
@@ -352,7 +352,7 @@ class StorageNodeMinion():
                 while rec:
                     stream = storage_client_socket.recv(1024)
                     data += stream
-                    print('so far...:' + str(len(data)))
+                    
                     if (len(data) == chunksize):
                         rec = False
                 # WRITE THE CHUNK TO STORAGE
@@ -601,7 +601,7 @@ class Client:
                 # The socket timeout is now the maximum total duration to send all data.
                 # which is bad for large files
                 minion_socket.sendall(data)
-                minion_socket.settimeout(timeout) # Exit Blocking Mode
+                
             
             request = minion_socket.recv(2048).decode()
             if (request == 'done'):
