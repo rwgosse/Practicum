@@ -71,7 +71,7 @@ def set_configuration(): # load settings from config file
     global active_client
     logging.basicConfig(filename=OUTPUTFNAME, filemode='a', format='%(name)s - %(levelname)s - %(message)s') # log errors to file
     conf = configparser.ConfigParser()
-    conf.readfp(open(CONFIG_FILE))
+    conf.read_file(open(CONFIG_FILE))
 
     if (conf.get('master', 'active_master') == 'yes'):
         #print ("active master")
@@ -103,7 +103,7 @@ def set_configuration(): # load settings from config file
 
 def organise_chain():
     conf = configparser.ConfigParser()
-    conf.readfp(open(CONFIG_FILE))
+    conf.read_file(open(CONFIG_FILE))
     foreign_nodes = sync_node_list(conf) # store urls of other nodes in a list
     blockchain = sync_local_chain(foreign_nodes) # create a list of the local blockchain
     blockchain = consensus(blockchain, foreign_nodes) # ensure that our blockchain is the longest
@@ -620,13 +620,13 @@ class AESCipher():# Provide Capacity to Encrypt and Decrypt Messages Using AES
    
     def encrypt(self, key, plaindata): # encrypt with AES 
         #key = self.padkey(key)
-        cipher = AES.new(key.encode("utf8"), AES.MODE_CBC)
+        cipher = AES.new(key.encode('utf-8'), AES.MODE_ECB)
         enc = cipher.encrypt(self.pad(plaindata))
         return base64.b64encode(enc)
 
     def decrypt(self, key, encodeddata):  # decrypt with AES 
         #key = self.padkey(key)
-        cipher = AES.new(key.encode("utf8"), AES.MODE_CBC)
+        cipher = AES.new(key.encode('utf-8'), AES.MODE_ECB)
         b64 = base64.b64decode(encodeddata)
         return self.unpad(cipher.decrypt(b64))
 
@@ -960,10 +960,11 @@ def promptUser(): ## take input from a prompt
                 try:
                     a, b = command.split(" ") 
                     client.put(b)
-                    return 'done put'   
-                except ValueError:
+                    return 'done put'
+                except ValueError as er: # oh man, the AES cipher throws a Value Error too, rats
                     print("bad path")
                     go = False
+                    raise er
                 if (go):
                     return command   
             if (command.startswith("sync")):
