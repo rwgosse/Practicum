@@ -228,6 +228,12 @@ class StorageNodeMaster(): # controller for storage master node
                 write_output("MASTER: incomming map request" + str(client_address))
                 #node_ids = incomming[1]
                 threading.Thread(target=self.get_minions, args=(client_socket, client_address, node_ids)).start() # pass connection to a new thread
+            if incomming[0].startswith("D"): #map request:
+                write_output("MASTER: incomming delete request" + str(client_address))
+                fname = incomming[1]
+                user = incomming[2]
+                threading.Thread(target=self.master_delete, args=(client_socket, client_address, fname, user)).start() # pass connection to a new thread
+
 
     def master_read(self, client_socket, client_address, filename, user):
         filename = filename + '_' + user
@@ -242,6 +248,22 @@ class StorageNodeMaster(): # controller for storage master node
         if (msg == "M"):
             minions2send = pickle.dumps(self.get_minions())
             client_socket.send(minions2send)
+            
+    def master_delete(self, client_socket, client_address, filename, user):
+        filename = filename + '_' + user
+        try:
+            print(filename)
+            mapping = file_table[filename]
+            print(mapping)
+            del file_table[filename]
+            write_output("MASTER: deleted file")
+            client_socket.send("done".encode('utf-8'))
+        except Exception as er:
+            write_output("MASTER: requested file not found")
+            client_socket.send("fail".encode('utf-8'))
+            raise er
+        
+            
 
     def master_write(self, client_socket, client_address, dest, size, user):
         dest = dest + '_' + user
@@ -431,6 +453,28 @@ class StorageNodeMinion():
 class Client:
     def __init__(self):
         pass
+    
+    def delete(self, fname):
+        global master_address
+        global master_port
+        overwrite = False
+        write_error = False
+        try:
+            socket_to_master = socket.socket(socket.AF_INET, socket.SOCK_STREAM)# Create a socket connection.
+            socket_to_master.settimeout(1)
+            socket_to_master.connect((master_address, master_port))
+        except socket.error as er:
+            write_output("CLIENT: failed to connect with master")
+        try:
+            msg = "D" + SPLIT + str(fname) + SPLIT + str(miner_address) # get file by name
+            msg = msg.encode('utf-8') # string to bytewise
+            socket_to_master.send(msg)
+            response = socket_to_master.recv(1024).decode()
+            if (response == 'done'):
+                write_output("CLIENT: NETWORK FILE DELETED")
+        except socket.error as er:
+            write_output("CLIENT: NETWORK FILE NOT FOUND")
+            return    
 
     def get(self, fname):
         global master_address
@@ -572,7 +616,7 @@ class Client:
             write_output("CLIENT: --->   UPLOADED FILE: " + source)
         except socket.error as er:
             write_output("CLIENT: failed to connect with master")
-            raise er
+            raise er # lets leave this here for now - nov 27th
 
     def send_to_minion(self, chunk_uuid, data, new_minions):
         minion = new_minions[0]
@@ -625,7 +669,6 @@ class AESCipher():# Provide Capacity to Encrypt and Decrypt Messages Using AES
         return base64.b64encode(enc)
 
     def decrypt(self, key, encodeddata):  # decrypt with AES 
-        #key = self.padkey(key)
         cipher = AES.new(key.encode('utf-8'), AES.MODE_ECB)
         b64 = base64.b64decode(encodeddata)
         return self.unpad(cipher.decrypt(b64))
@@ -946,6 +989,16 @@ def promptUser(): ## take input from a prompt
         if len(str(command)) > 0:
             if (command == "quit" or command == "exit"):		
                 return command
+            if (command.startswith("delete")):
+                try:
+                    a, b = command.split(" ")
+                    client.delete(b)
+                    return 'done delete'
+                except ValueError:
+                    print("bad path")
+                    go = False				
+                if (go):
+                    return command 
             if (command.startswith("get")):
                 try:
                     a, b = command.split(" ")
@@ -971,14 +1024,7 @@ def promptUser(): ## take input from a prompt
                 blockchain = organise_chain()
             if (command.startswith("mine")):
                 mine() 
-            if (command.startswith("delete")):
-                try:
-                    a, b = command.split(" ")
-                    print("not yet implemented")
-                    return 'done delete'
-                except ValueError:
-                    print("bad path")
-                    go = False
+            
             else:
                 return command
         else:
