@@ -252,9 +252,6 @@ class StorageNodeMaster(): # controller for storage master node
     def master_delete(self, client_socket, client_address, filename, user):
         filename = filename + '_' + user
         try:
-            print(filename)
-            mapping = file_table[filename]
-            print(mapping)
             del file_table[filename]
             write_output("MASTER: deleted file")
             client_socket.send("done".encode('utf-8'))
@@ -671,7 +668,7 @@ class AESCipher():# Provide Capacity to Encrypt and Decrypt Messages Using AES
     def decrypt(self, key, encodeddata):  # decrypt with AES 
         cipher = AES.new(key.encode('utf-8'), AES.MODE_ECB)
         b64 = base64.b64decode(encodeddata)
-        return self.unpad(cipher.decrypt(b64))
+        return self.unpad(cipher.decrypt(b64))    
 
 def create_genesis_block(): # create a new block to be the first in a new chain.
     block_data = {} # data here will be for the most place symbolic or otherwise meaningless.
