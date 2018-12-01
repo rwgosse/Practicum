@@ -267,7 +267,7 @@ class StorageNodeMaster(): # controller for storage master node
         except Exception as er:
             write_output("MASTER: requested file not found")
             client_socket.send("fail".encode('utf-8'))
-            raise er
+            #raise er
         
             
 
@@ -478,6 +478,8 @@ class Client:
             response = socket_to_master.recv(1024).decode()
             if (response == 'done'):
                 write_output("CLIENT: NETWORK FILE DELETED")
+            if (response == 'fail'):
+                write_output("CLIENT: NETWORK FILE NOT FOUND")
         except socket.error as er:
             write_output("CLIENT: NETWORK FILE NOT FOUND")
             return    
