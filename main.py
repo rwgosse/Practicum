@@ -71,35 +71,44 @@ def set_configuration(): # load settings from config file
     global active_client
     logging.basicConfig(filename=OUTPUTFNAME, filemode='a', format='%(name)s - %(levelname)s - %(message)s') # log errors to file
     conf = configparser.ConfigParser()
-    conf.read_file(open(CONFIG_FILE))
+    try:
+        conf.read_file(open(CONFIG_FILE))
+    except:
+        write_output("No Configuration File Present, Exiting...")
+        sys.exit(1)
+        
+    try:     
 
-    if (conf.get('master', 'active_master') == 'yes'):
-        #print ("active master")
-        active_master = True
+        if (conf.get('master', 'active_master') == 'yes'):
+            #print ("active master")
+            active_master = True
 
-    if (conf.get('minion', 'active_minion') == 'yes'):
-        #print ("active minion")
-        active_minion = True
+        if (conf.get('minion', 'active_minion') == 'yes'):
+            #print ("active minion")
+            active_minion = True
 
-    if (conf.get('miner', 'active_miner') == 'yes'):
-        #print ("active miner")
-        active_miner = True
+        if (conf.get('miner', 'active_miner') == 'yes'):
+            #print ("active miner")
+            active_miner = True
 
-    if (conf.get('client', 'active_client') == 'yes'):
-        #print ("active client")
-        active_client = True
+        if (conf.get('client', 'active_client') == 'yes'):
+            #print ("active client")
+            active_client = True
 
-    miner_address = get_miner_address(conf)
-    chunk_size = int(conf.get('master', 'chunk_size'))
-    replication_factor = int(conf.get('master', 'replication_factor'))
-    master_address, master_port = get_master_address(conf)
-    minions = {}
-    minionslist = conf.get('master', 'minions').split(',')
-    for m in minionslist:
-        id, host, port = m.split(':')
-        minions[id] = (host, port)
-    blockchain = organise_chain()
-    return blockchain, miner_address, master_address, master_port, minions, chunk_size, replication_factor
+        miner_address = get_miner_address(conf)
+        chunk_size = int(conf.get('master', 'chunk_size'))
+        replication_factor = int(conf.get('master', 'replication_factor'))
+        master_address, master_port = get_master_address(conf)
+        minions = {}
+        minionslist = conf.get('master', 'minions').split(',')
+        for m in minionslist:
+            id, host, port = m.split(':')
+            minions[id] = (host, port)
+        blockchain = organise_chain()
+        return blockchain, miner_address, master_address, master_port, minions, chunk_size, replication_factor
+    except:
+        write_output("Error In Configuration File, Exiting...")
+        sys.exit(1)
 
 def organise_chain():
     conf = configparser.ConfigParser()
