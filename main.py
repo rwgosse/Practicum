@@ -798,7 +798,7 @@ def is_ip(addr): # simple check as to if a string looks like a valid IPv4 addres
 def mine():
     # gather the data required to mine the block
     if local_transactions: # check if list is empty, very pythonic
-        print('mining...')
+        
         #print("# of local transactions:" + str(len(local_transactions)))
         current_transaction = local_transactions.pop(0) # first in, first out
         new_block_user_data = current_transaction.user_data
@@ -815,6 +815,8 @@ def mine():
         new_block_index = last_block.index + 1
         #print("new block index:" + str(new_block_index))
         last_block_hash = last_block.hash
+        print('MINING... ' + str(new_block_data_url))
+        
 
         ### ----- PROOF OF WORK
         #proof = proof_of_work(last_block.proof) #gets real slow over time. +3 hrs for blocks after 24
@@ -833,6 +835,7 @@ def mine():
         new_block = Block(block_data)
         blockchain.append(new_block)
         save_block(new_block)
+        print('MINING DONE... ' + str(new_block_data_url))
 
 def sync_node_list(conf): # read list of nodes from settings 
     nodes = []
