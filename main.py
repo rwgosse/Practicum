@@ -309,8 +309,8 @@ class StorageNodeMaster(): # controller for storage master node
         chunk_number = int(math.ceil(float(size) / self.chunk_size))# checking, big files generate too many chunks, duh
         if (chunk_number <= 4):
             return 5
-        elif (chunk_number >= 9):
-            return 8
+        elif (chunk_number >= 11):
+            return 10
         else:
             return chunk_number
         
@@ -927,8 +927,6 @@ def consensus(blockchain, foreign_nodes): # Get the blockchain from other nodes
             if (previous_index >= 0):
                 previous_blockname = '%s/%s.json' % (BLOCKCHAIN_DATA_DIR, previous_index)
                 if not os.path.isfile(filename): # do not write over existing block files until chain integrity check implemented
-
-
                     if os.path.isfile(previous_blockname):
                         with open(previous_blockname, 'r') as previous_block_file:
                             prev_block_info = json.load(previous_block_file)
@@ -947,10 +945,6 @@ def consensus(blockchain, foreign_nodes): # Get the blockchain from other nodes
                         with open(filename, 'w') as block_file:
                             write_output("ABOPTING BLOCK:: " + str(block.__dict__()))
                             json.dump(block.__dict__(), block_file)
-
-
-
-
                 else:
                     # existing block json should be handled here
                     # they shouldn't be overwritten but tagged somehow to show orphaned status
@@ -968,7 +962,7 @@ def consensus(blockchain, foreign_nodes): # Get the blockchain from other nodes
                                     write_output("ABOPTING ORPHAN BLOCK:: " + str(block.__dict__()))
                                     json.dump(block.__dict__(), block_file)
             else: # first block?
-                if not os.path.isfile(previous_blockname):
+                if not os.path.isfile(filename):
                     with open(filename, 'w') as block_file:
                         write_output("ABOPTING BLOCK:: " + str(block.__dict__()))
                         json.dump(block.__dict__(), block_file)
