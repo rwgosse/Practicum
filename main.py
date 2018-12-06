@@ -899,10 +899,11 @@ def save_block(block): # save a block as a local JSON file
 
 # python <3.0
 def only_numerics(seq):
-    #seq = str(seq)
+    seq = str(seq)
     #seq_type = type(seq)
     #return seq_type().join(filter(seq_type.isdigit, seq))
-    seq = ''.join(filter(lambda x: x.isdigit(), seq))
+    #seq = ''.join(filter(lambda x: x.isdigit(), seq))
+    seq = re.sub("\D","",seq)
     return seq
 
 def consensus(blockchain, foreign_nodes): # Get the blockchain from other nodes
