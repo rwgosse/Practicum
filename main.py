@@ -1077,12 +1077,85 @@ def promptUser(): ## take input from a prompt
                 blockchain = organise_chain()
             if (command.startswith("mine")):
                 mine()
+            if (command.startswith("block")):
+                try:
+                    a, b = command.split(" ")
+                except:
+                    print("bad path")
+                    go = False
+                if (go):
+                    return check_block(b)
+            if (command.startswith("chunk")):
+                try:
+                    a, b = command.split(" ")
+                except:
+                    print("bad path")
+                    go = False
+                if (go):
+                    return check_chunk(b)
 
             else:
                 return command
         else:
             print("String cannot be empty...")
             continue
+
+def check_chunk(block_index):
+    
+             
+    filename = '%s/%s.json' % (BLOCKCHAIN_DATA_DIR, block_index)
+    try:
+        with open(filename, 'r') as existing_block_file:
+            block_info = json.load(existing_block_file)
+            existing_block_object = Block(block_info)
+            chunk_uuid = existing_block_object.data_url
+            chunk_addr = DATA_DIR + "/" + chunk_uuid
+            with open(chunk_addr, 'rb') as f:
+                data = f.read()
+                sha = hasher.sha256()
+                sha.update(data)
+                redone_hashed_data = sha.hexdigest()
+                
+                sha = hasher.sha256()
+                from_chunk = str(existing_block_object.index) + str(existing_block_object.timestamp) + str(existing_block_object.user_data) + str(redone_hashed_data) + str(existing_block_object.data_url) + str(existing_block_object.previous_hash) + str(existing_block_object.proof)
+                sha.update(from_chunk.encode("utf-8"))
+                redone_hash_from_chunk = sha.hexdigest()
+                
+                #sha = hasher.sha256()
+                #from_block = str(existing_block_object.index) + str(existing_block_object.timestamp) + str(existing_block_object.user_data) + str(existing_block_object.hash) + str(existing_block_object.data_url) + str(existing_block_object.previous_hash) + str(existing_block_object.proof)
+                #sha.update(from_block.encode("utf-8"))
+                #redone_existing_hash = sha.hexdigest()
+            
+        
+                if (redone_hash_from_chunk == existing_block_object.hash):
+                    print("CHUNK AND BLOCK OK: " + str(redone_hash_from_chunk) + " == " + str(existing_block_object.hash))
+                else:
+                    print("CHECK FAIL: " + str(redone_hash_from_chunk) + " != " + str(existing_block_object.hash))
+    except Exception as er:
+        print('No such block / chunk link on this machine')
+        #raise er
+        
+    
+
+
+def check_block(block_index):
+    filename = '%s/%s.json' % (BLOCKCHAIN_DATA_DIR, block_index)
+    try:
+        with open(filename, 'r') as existing_block_file:
+            block_info = json.load(existing_block_file)
+            existing_block_object = Block(block_info)
+            sha = hasher.sha256()
+            from_block = str(existing_block_object.index) + str(existing_block_object.timestamp) + str(existing_block_object.user_data) + str(existing_block_object.data_hash) + str(existing_block_object.data_url) + str(existing_block_object.previous_hash) + str(existing_block_object.proof)
+            sha.update(from_block.encode("utf-8"))
+            redone_hash = sha.hexdigest()
+            if (redone_hash == existing_block_object.hash):
+                print("BLOCK OK: " + str(redone_hash))
+            else:
+                print("CHECK FAIL: " + str(redone_hash) + " != " + str(existing_block_object.hash))
+    except Exception as er:
+        print("No such blockfile " + filename)
+        #raise er
+    
 
 # Initial Setup
 global localhost
