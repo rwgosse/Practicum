@@ -748,7 +748,7 @@ def get_blocks(): # ready local blockchain for transmission
 def add_transaction(user_data, data_hash, data_url):# add a new transaction to the list POST
     # get incomming transaction
     # add it to the list
-    write_output("New Transaction: " + user_data + " " + data_hash + " " + data_url)
+    write_output("New Transaction: user data: " + user_data + " data hash: " + data_hash + " url: " + data_url)
     local_transactions.append(Transaction(user_data, data_hash, data_url))
 
 def proof_of_work(last_proof):  #More research here!!!
@@ -799,7 +799,7 @@ def mine():
     # gather the data required to mine the block
     if local_transactions: # check if list is empty, very pythonic
         
-        #print("# of local transactions:" + str(len(local_transactions)))
+        
         current_transaction = local_transactions.pop(0) # first in, first out
         new_block_user_data = current_transaction.user_data
         new_block_data_url = current_transaction.data_url
