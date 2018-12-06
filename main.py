@@ -31,6 +31,7 @@ import configparser
 from Crypto.Cipher import AES
 from Crypto import Random
 import base64
+import re
 
 # Project Meta Variables
 __author__ = "Richard W Gosse - A00246425" # name, student number
@@ -106,9 +107,9 @@ def set_configuration(): # load settings from config file
             minions[id] = (host, port)
         blockchain = organise_chain()
         return blockchain, miner_address, master_address, master_port, minions, chunk_size, replication_factor
-    except:
+    except Exception as er:
         write_output("Error In Configuration File, Exiting...")
-        sys.exit(1)
+        raise er
 
 def organise_chain():
     conf = configparser.ConfigParser()
@@ -879,7 +880,7 @@ def sync_local_chain(foreign_nodes): # read local block JSON files
                         block_object = Block(block_info) # umm maybe need dict?
                         #print("SYNC:BLOCK:" + str(block_object.index))
                         syncing_blocks.append(block_object)
-    syncing_blocks.sort(key=lambda x: x.index) # holy crap did this fix a big problem
+    syncing_blocks.sort(key=lambda x: only_numerics(x.index)) # holy crap did this fix a big problem
     return syncing_blocks
 
 def save_block(block): # save a block as a local JSON file
@@ -888,6 +889,12 @@ def save_block(block): # save a block as a local JSON file
         with open(filename, 'w') as block_file:
             write_output("NEW BLOCK:: " + str(block.__dict__()))
             json.dump(block.__dict__(), block_file)
+
+# python <3.0
+def only_numerics(seq):
+    seq = str(seq)
+    seq_type= type(seq)
+    return seq_type().join(filter(seq_type.isdigit, seq))
 
 def consensus(blockchain, foreign_nodes): # Get the blockchain from other nodes
     new_chain = False # initial condition
@@ -904,30 +911,60 @@ def consensus(blockchain, foreign_nodes): # Get the blockchain from other nodes
             longest_chain = chain # set it as the longest_chain
             new_chain = True
     blockchain = longest_chain # set the longest list as our new local chain
-    blockchain.sort(key=lambda x: x.index) # holy crap did this fix a big problem
+    blockchain.sort(key=lambda x: only_numerics(x.index)) # holy crap did this fix a big problem
     if new_chain: #check condition
         write_output("NEW LONG CHAIN")
         for block in blockchain:
             filename = '%s/%s.json' % (BLOCKCHAIN_DATA_DIR, block.index)
-            if not os.path.isfile(filename): # do not write over existing block files until chain integrity check implemented
-                with open(filename, 'w') as block_file:
-                    write_output("ABOPTING BLOCK:: " + str(block.__dict__()))
-                    json.dump(block.__dict__(), block_file)
-            else:
-                # existing block json should be handled here
-                # they shouldn't be overwritten but tagged somehow to show orphaned status
-                with open(filename, 'r') as existing_block_file:
-                    block_info = json.load(existing_block_file)
-                    existing_block_object = Block(block_info)
-                    if (existing_block_object.hash == block.hash):
-                        #write_output("block " + str(block.index) + " already exists - abort write")
-                        pass
+            previous_index = block.index - 1
+            if (previous_index >= 0):
+                previous_blockname = '%s/%s.json' % (BLOCKCHAIN_DATA_DIR, previous_index)
+                if not os.path.isfile(filename): # do not write over existing block files until chain integrity check implemented
+                
+                
+                    if os.path.isfile(previous_blockname):
+                        with open(previous_blockname, 'r') as previous_block_file:
+                            prev_block_info = json.load(previous_block_file)
+                            prev_block_object = Block(prev_block_info)
+                            if (prev_block_object.hash == block.previous_hash):
+                                with open(filename, 'w') as block_file:
+                                    write_output("ABOPTING BLOCK:: " + str(block.__dict__()))
+                                    json.dump(block.__dict__(), block_file)
+                            else:
+                                filename = '%s/%s%s.json' % (BLOCKCHAIN_DATA_DIR, block.index, ORPHAN_TAG)
+                                block.index = str(block.index) + ORPHAN_TAG # the oliver twist
+                                with open(filename, 'w') as block_file:
+                                    write_output("ABOPTING ORPHAN BLOCK:: " + str(block.__dict__()))
+                                    json.dump(block.__dict__(), block_file)
                     else:
-                        filename = '%s/%s%s.json' % (BLOCKCHAIN_DATA_DIR, block.index, ORPHAN_TAG)
-                        block.index = str(block.index) + ORPHAN_TAG # the oliver twist
                         with open(filename, 'w') as block_file:
-                            write_output("ABOPTING ORPHAN BLOCK:: " + str(block.__dict__()))
-                            json.dump(block.__dict__(), block_file)
+                                    write_output("ABOPTING BLOCK:: " + str(block.__dict__()))
+                                    json.dump(block.__dict__(), block_file)
+                                
+                                
+                    
+                    
+                else:
+                    # existing block json should be handled here
+                    # they shouldn't be overwritten but tagged somehow to show orphaned status
+                    with open(filename, 'r') as existing_block_file:
+                        block_info = json.load(existing_block_file)
+                        existing_block_object = Block(block_info)
+                        if (existing_block_object.hash == block.hash):
+                            #write_output("block " + str(block.index) + " already exists - abort write")
+                            pass
+                        else:
+                            if (existing_block_object.previous_hash == block.previous_hash):
+                                filename = '%s/%s%s.json' % (BLOCKCHAIN_DATA_DIR, block.index, ORPHAN_TAG)
+                                block.index = str(block.index) + ORPHAN_TAG # the oliver twist
+                                with open(filename, 'w') as block_file:
+                                    write_output("ABOPTING ORPHAN BLOCK:: " + str(block.__dict__()))
+                                    json.dump(block.__dict__(), block_file)
+            else: # first block?
+                with open(filename, 'w') as block_file:
+                                write_output("ABOPTING BLOCK:: " + str(block.__dict__()))
+                                json.dump(block.__dict__(), block_file)
+                
     return blockchain
 
 def findchains(foreign_nodes):
