@@ -813,7 +813,7 @@ def mine():
         last_block = blockchain[length - 1]
         #print ("last block index:" + str(last_block.index)) ## incorrect feeds 5
         #print (last_block.index + 1)
-        new_block_index = only_numerics(last_block.index) + 1
+        new_block_index = int(only_numerics(last_block.index)) + 1
         #print("new block index:" + str(new_block_index))
         last_block_hash = last_block.hash
         print('MINING... ' + str(new_block_data_url))
