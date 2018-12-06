@@ -904,7 +904,7 @@ def only_numerics(seq):
     #return seq_type().join(filter(seq_type.isdigit, seq))
     #seq = ''.join(filter(lambda x: x.isdigit(), seq))
     seq = re.sub("\D","",seq)
-    return seq
+    return int(seq)
 
 def consensus(blockchain, foreign_nodes): # Get the blockchain from other nodes
     new_chain = False # initial condition
