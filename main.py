@@ -818,9 +818,9 @@ def mine():
         length = len(blockchain)
         #print("last block:" + str(length - 1)) ## correct feeds 6
         last_block = blockchain[length - 1]
-        #print ("last block index:" + str(last_block.index)) ## incorrect feeds 5
+        print ("last block index:" + str(last_block.index)) ## incorrect feeds 5
         #print (last_block.index + 1)
-        new_block_index = int(only_numerics(last_block.index)) + 1
+        new_block_index = only_numerics(last_block.index) + 1
         #print("new block index:" + str(new_block_index))
         last_block_hash = last_block.hash
         print('MINING... ' + str(new_block_data_url))
@@ -899,9 +899,11 @@ def save_block(block): # save a block as a local JSON file
 
 # python <3.0
 def only_numerics(seq):
-    seq = str(seq)
-    seq_type = type(seq)
-    return seq_type().join(filter(seq_type.isdigit, seq))
+    #seq = str(seq)
+    #seq_type = type(seq)
+    #return seq_type().join(filter(seq_type.isdigit, seq))
+    seq = ''.join(filter(lambda x: x.isdigit(), seq))
+    return seq
 
 def consensus(blockchain, foreign_nodes): # Get the blockchain from other nodes
     new_chain = False # initial condition
