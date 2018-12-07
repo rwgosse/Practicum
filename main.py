@@ -35,8 +35,8 @@ import re
 
 # Project Meta Variables
 __author__ = "Richard W Gosse - A00246425" # name, student number
-__date__ = "$25-Nov-2018 16:17:00 PM$" # updated with each version change
-VERSION = "0.5" # aibitrary version number, updated manually during development, does not relate to any commits
+__date__ = "$6-Dec-2018 16:17:00 PM$" # updated with each version change
+VERSION = "0.6" # aibitrary version number, updated manually during development, does not relate to any commits
 OUTPUTFNAME = "./logfile.txt" # output log file
 BLOCKCHAIN_DATA_DIR = 'chaindata' # folder for json formatted blocks
 CHAIN_PORT = 8000  # local port for hosting of chain data
@@ -46,7 +46,7 @@ DATA_DIR = 'chunkdata' # chunk data directory
 FS_IMAGE = 'fs.img' # chunk file mapping system
 CONFIG_FILE = 'settings.cfg' # local file with settings
 SPLIT = '\n' # used to line break socket streams
-TESTFILE = 'testfile.jpg' # file used for uploads & downloads during dev
+TESTFILE = 'testfile.jpg' # defaultfile used for uploads & downloads during dev
 RECEIVED_FILE_PREFIX = 'new_' # for demo purposes and so I don't loose orig files if i do something dumb
 RECEIVED_FILE_SUFFIX = '_new'
 PASSPHRASE = '8A0F8F3B1D0FA8720104C22E8A15CCDF' # default Passphrase er key.
