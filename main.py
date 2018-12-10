@@ -12,6 +12,8 @@
 
 # See related project documents:
 # A00246425_Gosse_Richard_btech_majorproject_Proposol_Oct1.pdf
+# A00246425_Gosse_Richard_btech_majorproject_Report_Dec7.pdf
+
 
 import datetime as date
 import time
@@ -372,7 +374,7 @@ class StorageNodeMinion():
                 break
             incomming = incomming.split(SPLIT) # determine nature of request
 
-            if incomming[0].startswith("P"): # put request
+            if (incomming[0].startswith("P")) or (incomming[0].startswith("F")): # put request
                 # RECEIVE META
                 chunk_uuid = incomming[1]
                 chunksize = int(incomming[2])
@@ -402,11 +404,12 @@ class StorageNodeMinion():
                 if len(incomming_minions) > 0: # are there additional minions to carry the chunk?
                     self.forward(chunk_uuid, data, incomming_minions) # then forward the chunk!
                 storage_client_socket.close()
-                write_output("MINION: create transaction...")
-                sha = hasher.sha256()
-                sha.update(data)
-                hashed_data = sha.hexdigest()
-                add_transaction(miner_address, hashed_data, chunk_uuid) # attach the user data
+                if incomming[0].startswith("P"):
+                    write_output("MINION: create transaction...")
+                    sha = hasher.sha256()
+                    sha.update(data)
+                    hashed_data = sha.hexdigest()
+                    add_transaction(miner_address, hashed_data, chunk_uuid) # attach the user data
                 break
 
             if incomming[0].startswith("G"): #get request:
@@ -442,7 +445,7 @@ class StorageNodeMinion():
             forwarding_socket.settimeout(timeout)
             forwarding_socket.connect((minion_host, int(minion_port)))
             # START META DATA
-            msg = "P" + SPLIT + str(chunk_uuid) + SPLIT + str(len(data)) #str(sys.getsizeof(data)) # get sizeof adds 33 extra :(
+            msg = "F" + SPLIT + str(chunk_uuid) + SPLIT + str(len(data)) #str(sys.getsizeof(data)) # get sizeof adds 33 extra :(
             msg = msg.encode('utf-8') # string to bytewise
             forwarding_socket.send(msg)
             request = forwarding_socket.recv(2048).decode()
