@@ -7,6 +7,3 @@ Richard W Gosse - A00246425
 # The addition of block chain transactions will allow for network storage
 # meta data, such as URLs and access rights, to be secured.
 
-# See related project documents:
-# A00246425_Gosse_Richard_btech_majorproject_Proposol_Oct1.pdf
-# A00246425_Gosse_Richard_btech_majorproject_Report_Dec7.pdf
